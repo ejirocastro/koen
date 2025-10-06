@@ -59,109 +59,63 @@ export default function Hero() {
             </div>
           </div>
 
-          {/* Right side - Product Mockup */}
+          {/* Right side - 3D Rotating Globe Masterpiece */}
           <div className="relative animate-fade-in" style={{ animationDelay: '0.3s' }}>
-            {/* Phone mockup container */}
-            <div className="relative mx-auto max-w-sm lg:max-w-md">
-              {/* Phone frame */}
-              <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-[3rem] p-4 shadow-2xl border-8 border-gray-800">
-                {/* Notch */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-gray-800 rounded-b-3xl z-10" />
+            {/* Massive radial glow background */}
+            <div className="absolute inset-0 bg-gradient-radial from-accent/30 via-accent/10 to-transparent blur-3xl animate-pulse" style={{ animationDuration: '5s' }} />
 
-                {/* Screen content */}
-                <div className="relative bg-gradient-to-br from-background to-muted rounded-[2.5rem] overflow-hidden aspect-[9/19.5]">
-                  {/* App Header */}
-                  <div className="p-6 border-b border-border/30">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-accent to-primary flex items-center justify-center text-xl font-bold">
-                        K
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">🔔</div>
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">⚙️</div>
-                      </div>
-                    </div>
-                    <div className="text-sm text-foreground/60">Available Balance</div>
-                    <div className="text-3xl font-bold text-gradient">$25,450.75</div>
-                  </div>
+            {/* Outer rotating ring glow */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-accent/40 via-primary/40 to-accent/40 blur-3xl opacity-60 animate-spin-slow" style={{ animationDuration: '40s' }} />
 
-                  {/* Quick Actions */}
-                  <div className="grid grid-cols-3 gap-3 p-6">
-                    <div className="text-center p-4 rounded-xl bg-muted/50">
-                      <div className="text-2xl mb-2">💰</div>
-                      <div className="text-xs font-semibold">Deposit</div>
-                    </div>
-                    <div className="text-center p-4 rounded-xl bg-accent/20 border border-accent/50">
-                      <div className="text-2xl mb-2">⚡</div>
-                      <div className="text-xs font-semibold text-accent">Borrow</div>
-                    </div>
-                    <div className="text-center p-4 rounded-xl bg-muted/50">
-                      <div className="text-2xl mb-2">📤</div>
-                      <div className="text-xs font-semibold">Send</div>
-                    </div>
-                  </div>
+            {/* Inner pulsing glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-r from-accent/20 to-primary/20 rounded-full blur-2xl animate-pulse" style={{ animationDuration: '3s' }} />
 
-                  {/* Reputation Card */}
-                  <div className="mx-6 mb-4 p-4 rounded-xl bg-gradient-to-br from-accent/20 to-primary/20 border border-accent/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-semibold">Reputation Score</div>
-                      <div className="text-lg">🥇</div>
-                    </div>
-                    <div className="text-2xl font-bold text-gradient mb-1">750 / 1000</div>
-                    <div className="text-xs text-foreground/60">Gold Tier - 15x Credit Multiplier</div>
-                  </div>
+            <div className="relative mx-auto max-w-lg lg:max-w-2xl xl:max-w-3xl perspective-1000">
+              {/* Top light beam effect */}
+              <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-96 h-96 bg-gradient-to-b from-accent/30 to-transparent blur-3xl pointer-events-none" />
 
-                  {/* Assets List */}
-                  <div className="px-6 pb-6">
-                    <div className="text-sm font-semibold mb-3">Your Assets</div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center text-sm">₿</div>
-                          <div>
-                            <div className="text-xs font-semibold">Bitcoin</div>
-                            <div className="text-xs text-foreground/60">0.5 BTC</div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs font-semibold">$32,500</div>
-                          <div className="text-xs text-green-400">+2.5%</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-sm">$</div>
-                          <div>
-                            <div className="text-xs font-semibold">kUSD</div>
-                            <div className="text-xs text-foreground/60">12,500 kUSD</div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs font-semibold">$12,500</div>
-                          <div className="text-xs text-foreground/60">0.0%</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              {/* Side light beams */}
+              <div className="absolute top-1/2 -left-40 w-64 h-64 bg-accent/20 rounded-full blur-3xl animate-float" style={{ animationDuration: '8s' }} />
+              <div className="absolute top-1/2 -right-40 w-64 h-64 bg-primary/20 rounded-full blur-3xl animate-float" style={{ animationDuration: '10s', animationDelay: '2s' }} />
+
+              {/* Main globe container with 3D perspective */}
+              <div className="relative transform-gpu" style={{ transformStyle: 'preserve-3d' }}>
+                {/* Rotating shadow base */}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80%] h-8 bg-black/40 rounded-full blur-2xl" />
+
+                {/* Main globe with rotation */}
+                <div className="relative">
+                  <img
+                    src="/globe33.png"
+                    alt="Kōen Global DeFi Network - 3D Rotating Globe"
+                    className="w-full h-auto relative z-10 animate-spin-slow"
+                    style={{
+                      animationDuration: '25s',
+                      filter: 'drop-shadow(0 25px 50px rgba(52, 211, 153, 0.4)) brightness(1.1) contrast(1.15)',
+                      transformStyle: 'preserve-3d'
+                    }}
+                  />
+
+                  {/* Multi-layer glow effects */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-accent/40 via-transparent to-primary/40 rounded-full pointer-events-none blur-2xl" />
+                  <div className="absolute inset-0 bg-accent/30 rounded-full pointer-events-none blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+
+                  {/* Shine effect overlay */}
+                  <div className="absolute top-[20%] left-[30%] w-[40%] h-[40%] bg-gradient-to-br from-white/30 via-white/10 to-transparent rounded-full pointer-events-none blur-xl" />
                 </div>
+
+                {/* Orbiting light particles */}
+                <div className="absolute top-[20%] left-[10%] w-4 h-4 bg-accent rounded-full blur-sm animate-float" style={{ animationDuration: '6s', animationDelay: '0s' }} />
+                <div className="absolute top-[60%] right-[15%] w-3 h-3 bg-primary rounded-full blur-sm animate-float" style={{ animationDuration: '7s', animationDelay: '1s' }} />
+                <div className="absolute bottom-[30%] left-[20%] w-5 h-5 bg-accent/80 rounded-full blur-sm animate-float" style={{ animationDuration: '8s', animationDelay: '2s' }} />
+                <div className="absolute top-[40%] right-[25%] w-2 h-2 bg-emerald-400 rounded-full blur-sm animate-float" style={{ animationDuration: '9s', animationDelay: '3s' }} />
               </div>
 
-              {/* Floating notifications */}
-              <div className="absolute -left-4 top-32 bg-background/95 backdrop-blur-sm border border-accent/50 rounded-xl p-4 shadow-2xl max-w-[200px] animate-float" style={{ animationDelay: '1s' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">🎯</div>
-                  <div className="text-xs font-semibold">Reputation Boost!</div>
-                </div>
-                <div className="text-xs text-foreground/60">You earned +50 points for consistent repayment</div>
-              </div>
-
-              <div className="absolute -right-4 top-96 bg-background/95 backdrop-blur-sm border border-accent/50 rounded-xl p-4 shadow-2xl max-w-[200px] animate-float" style={{ animationDelay: '2s' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">💎</div>
-                  <div className="text-xs font-semibold">New Credit Limit</div>
-                </div>
-                <div className="text-xs text-foreground/60">Your limit increased to $18,750 kUSD</div>
-              </div>
+              {/* Large floating particle effects */}
+              <div className="absolute top-10 -left-20 w-40 h-40 bg-accent/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '0.5s', animationDuration: '12s' }} />
+              <div className="absolute bottom-20 -right-24 w-48 h-48 bg-primary/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '1.5s', animationDuration: '14s' }} />
+              <div className="absolute top-1/3 -right-16 w-32 h-32 bg-accent/25 rounded-full blur-2xl animate-float" style={{ animationDelay: '2.5s', animationDuration: '10s' }} />
+              <div className="absolute bottom-1/3 -left-16 w-36 h-36 bg-emerald-500/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '3.5s', animationDuration: '16s' }} />
             </div>
           </div>
         </div>
