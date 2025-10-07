@@ -22,13 +22,13 @@ export default function Hero() {
             </div>
 
             {/* Main heading */}
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 animate-slide-up">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-6 animate-slide-up">
               <span className="block mb-2">Your Bitcoin Activity</span>
               <span className="text-gradient">Is Your Credit Score</span>
             </h1>
 
             {/* Subheading */}
-            <p className="text-lg md:text-xl text-foreground/70 mb-12 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+            <p className="text-base md:text-lg text-foreground/70 mb-12 animate-slide-up" style={{ animationDelay: '0.2s' }}>
               Access the premier DeFi lending platform built to grow your Bitcoin holdings. Leverage your on-chain reputation for unprecedented borrowing power.
             </p>
 
@@ -41,26 +41,10 @@ export default function Hero() {
                 Learn More
               </button>
             </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-6 mt-16 animate-fade-in" style={{ animationDelay: '0.6s' }}>
-              <div className="text-center lg:text-left">
-                <div className="text-2xl md:text-3xl font-bold text-gradient mb-1">Operating</div>
-                <div className="text-sm text-foreground/60">since 2024</div>
-              </div>
-              <div className="text-center lg:text-left">
-                <div className="text-2xl md:text-3xl font-bold text-gradient mb-1">24/7</div>
-                <div className="text-sm text-foreground/60">Support</div>
-              </div>
-              <div className="text-center lg:text-left">
-                <div className="text-2xl md:text-3xl font-bold text-gradient mb-1">$0M+</div>
-                <div className="text-sm text-foreground/60">TVL</div>
-              </div>
-            </div>
           </div>
 
           {/* Right side - 3D Rotating Globe Masterpiece */}
-          <div className="relative animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <div className="relative animate-fade-in -mt-16 lg:-mt-20" style={{ animationDelay: '0.3s' }}>
             {/* Massive radial glow background */}
             <div className="absolute inset-0 bg-gradient-radial from-accent/30 via-accent/10 to-transparent blur-3xl animate-pulse" style={{ animationDuration: '5s' }} />
 

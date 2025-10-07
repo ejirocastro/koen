@@ -35,13 +35,14 @@ export default function Navbar() {
             </a>
           </div>
 
-          {/* CTA Buttons */}
-          <div className="hidden md:flex items-center gap-4">
-            <button className="px-6 py-2.5 bg-transparent border border-border hover:border-accent/50 text-foreground font-semibold rounded-lg transition-all hover:bg-muted/30">
+          {/* CTA Button */}
+          <div className="hidden md:flex items-center">
+            <button className="px-6 py-2.5 bg-transparent border border-accent/50 hover:border-accent text-accent font-semibold rounded-lg transition-all hover:bg-accent/5 flex items-center gap-2">
+              {/* Wallet icon (SVG) */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+              </svg>
               Connect Wallet
-            </button>
-            <button className="px-6 py-2.5 bg-accent hover:bg-accent/90 text-background font-semibold rounded-lg transition-all glow">
-              Launch App
             </button>
           </div>
 
@@ -83,12 +84,13 @@ export default function Navbar() {
             <a href="#docs" className="block text-foreground/70 hover:text-accent transition-colors font-medium">
               Docs
             </a>
-            <div className="pt-4 space-y-2">
-              <button className="w-full px-6 py-2.5 bg-transparent border border-border hover:border-accent/50 text-foreground font-semibold rounded-lg transition-all">
+            <div className="pt-4">
+              <button className="w-full px-6 py-2.5 bg-transparent border border-accent/50 hover:border-accent text-accent font-semibold rounded-lg transition-all hover:bg-accent/5 flex items-center gap-2 justify-center">
+                {/* Wallet icon (SVG) */}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+                </svg>
                 Connect Wallet
-              </button>
-              <button className="w-full px-6 py-2.5 bg-accent hover:bg-accent/90 text-background font-semibold rounded-lg transition-all">
-                Launch App
               </button>
             </div>
           </div>

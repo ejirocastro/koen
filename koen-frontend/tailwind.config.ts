@@ -18,6 +18,10 @@ const config: Config = {
         muted: "hsl(var(--muted))",
         border: "hsl(var(--border))",
       },
+      fontFamily: {
+        'space-grotesk': ['var(--font-space-grotesk)'],
+        'outfit': ['var(--font-outfit)'],
+      },
     },
   },
   plugins: [],
