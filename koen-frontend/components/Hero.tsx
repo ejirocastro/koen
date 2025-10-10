@@ -1,15 +1,21 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+
 export default function Hero() {
+  const router = useRouter();
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Animated background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-muted">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(52,211,153,0.1),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(52,211,153,0.08),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(52,211,153,0.12),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(52,211,153,0.10),transparent_50%)]" />
       </div>
 
       {/* Floating orbs */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-accent/20 rounded-full blur-3xl animate-float" />
-      <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '3s' }} />
+      <div className="absolute top-20 left-10 w-72 h-72 bg-accent/22 rounded-full blur-3xl animate-float" />
+      <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/13 rounded-full blur-3xl animate-float" style={{ animationDelay: '3s' }} />
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-32">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -34,7 +40,10 @@ export default function Hero() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-slide-up" style={{ animationDelay: '0.4s' }}>
-              <button className="px-8 py-4 bg-accent hover:bg-accent/90 text-background font-semibold rounded-lg transition-all glow hover:glow-strong transform hover:scale-105">
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="px-8 py-4 bg-accent hover:bg-accent/90 text-background font-semibold rounded-lg transition-all glow hover:glow-strong transform hover:scale-105"
+              >
                 Launch App
               </button>
               <button className="px-8 py-4 bg-transparent border border-border hover:border-accent/50 text-foreground font-semibold rounded-lg transition-all hover:bg-muted/30">
@@ -46,21 +55,21 @@ export default function Hero() {
           {/* Right side - 3D Rotating Globe Masterpiece */}
           <div className="relative animate-fade-in -mt-16 lg:-mt-20" style={{ animationDelay: '0.3s' }}>
             {/* Massive radial glow background */}
-            <div className="absolute inset-0 bg-gradient-radial from-accent/30 via-accent/10 to-transparent blur-3xl animate-pulse" style={{ animationDuration: '5s' }} />
+            <div className="absolute inset-0 bg-gradient-radial from-accent/35 via-accent/12 to-transparent blur-3xl animate-pulse" style={{ animationDuration: '5s' }} />
 
             {/* Outer rotating ring glow */}
-            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-accent/40 via-primary/40 to-accent/40 blur-3xl opacity-60 animate-spin-slow" style={{ animationDuration: '40s' }} />
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-accent/45 via-primary/45 to-accent/45 blur-3xl opacity-65 animate-spin-slow" style={{ animationDuration: '40s' }} />
 
             {/* Inner pulsing glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-r from-accent/20 to-primary/20 rounded-full blur-2xl animate-pulse" style={{ animationDuration: '3s' }} />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-r from-accent/25 to-primary/25 rounded-full blur-2xl animate-pulse" style={{ animationDuration: '3s' }} />
 
             <div className="relative mx-auto max-w-lg lg:max-w-2xl xl:max-w-3xl perspective-1000">
               {/* Top light beam effect */}
-              <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-96 h-96 bg-gradient-to-b from-accent/30 to-transparent blur-3xl pointer-events-none" />
+              <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-96 h-96 bg-gradient-to-b from-accent/35 to-transparent blur-3xl pointer-events-none" />
 
               {/* Side light beams */}
-              <div className="absolute top-1/2 -left-40 w-64 h-64 bg-accent/20 rounded-full blur-3xl animate-float" style={{ animationDuration: '8s' }} />
-              <div className="absolute top-1/2 -right-40 w-64 h-64 bg-primary/20 rounded-full blur-3xl animate-float" style={{ animationDuration: '10s', animationDelay: '2s' }} />
+              <div className="absolute top-1/2 -left-40 w-64 h-64 bg-accent/25 rounded-full blur-3xl animate-float" style={{ animationDuration: '8s' }} />
+              <div className="absolute top-1/2 -right-40 w-64 h-64 bg-primary/25 rounded-full blur-3xl animate-float" style={{ animationDuration: '10s', animationDelay: '2s' }} />
 
               {/* Main globe container with 3D perspective */}
               <div className="relative transform-gpu" style={{ transformStyle: 'preserve-3d' }}>
@@ -81,11 +90,11 @@ export default function Hero() {
                   />
 
                   {/* Multi-layer glow effects */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-accent/40 via-transparent to-primary/40 rounded-full pointer-events-none blur-2xl" />
-                  <div className="absolute inset-0 bg-accent/30 rounded-full pointer-events-none blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+                  <div className="absolute inset-0 bg-gradient-to-br from-accent/45 via-transparent to-primary/45 rounded-full pointer-events-none blur-2xl" />
+                  <div className="absolute inset-0 bg-accent/35 rounded-full pointer-events-none blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
 
                   {/* Shine effect overlay */}
-                  <div className="absolute top-[20%] left-[30%] w-[40%] h-[40%] bg-gradient-to-br from-white/30 via-white/10 to-transparent rounded-full pointer-events-none blur-xl" />
+                  <div className="absolute top-[20%] left-[30%] w-[40%] h-[40%] bg-gradient-to-br from-white/35 via-white/12 to-transparent rounded-full pointer-events-none blur-xl" />
                 </div>
 
                 {/* Orbiting light particles */}

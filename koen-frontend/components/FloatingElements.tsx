@@ -49,91 +49,37 @@ export default function FloatingElements() {
             </button>
           </div>
 
-          {/* Right side - Floating cards showcase */}
-          <div className="relative h-[600px]">
-            {/* Floating card 1 */}
-            <div
-              className="absolute top-0 left-0 w-72 gradient-border rounded-2xl p-6 bg-background/80 backdrop-blur-sm animate-float"
-              style={{ animationDuration: '6s', animationDelay: '0s' }}
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-primary flex items-center justify-center text-2xl">
-                  🏆
-                </div>
-                <div>
-                  <div className="text-sm text-foreground/60">Your Tier</div>
-                  <div className="text-xl font-bold text-gradient">Gold Member</div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-foreground/70">Credit Score</span>
-                  <span className="font-bold text-accent">850/1000</span>
-                </div>
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full w-[85%] bg-gradient-to-r from-accent to-primary rounded-full" />
-                </div>
-              </div>
+          {/* Right side - Floating Bitcoin Image */}
+          <div className="relative h-[600px] flex items-center justify-center">
+            {/* Glowing background effects */}
+            <div className="absolute inset-0 bg-gradient-radial from-accent/20 via-transparent to-transparent blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+            <div className="absolute inset-0 bg-gradient-to-r from-accent/15 to-primary/15 rounded-full blur-2xl animate-pulse" style={{ animationDuration: '3s', animationDelay: '1s' }} />
+
+            {/* Main floating Bitcoin image */}
+            <div className="relative animate-float" style={{ animationDuration: '6s' }}>
+              {/* Glow effect behind image */}
+              <div className="absolute inset-0 bg-accent/30 rounded-full blur-3xl" />
+
+              <img
+                src="/btc.png"
+                alt="Bitcoin - Powered Lending"
+                className="relative z-10 w-full max-w-md lg:max-w-lg drop-shadow-2xl"
+                style={{
+                  filter: 'drop-shadow(0 20px 40px rgba(52, 211, 153, 0.3)) brightness(1.1)'
+                }}
+              />
+
+              {/* Additional glow layers */}
+              <div className="absolute inset-0 bg-gradient-to-t from-accent/20 via-transparent to-primary/20 rounded-full blur-xl pointer-events-none" />
             </div>
 
-            {/* Floating card 2 */}
-            <div
-              className="absolute top-32 right-0 w-64 gradient-border rounded-2xl p-6 bg-background/80 backdrop-blur-sm animate-float"
-              style={{ animationDuration: '7s', animationDelay: '1s' }}
-            >
-              <div className="text-3xl mb-3">💰</div>
-              <div className="text-sm text-foreground/60 mb-1">Available to Borrow</div>
-              <div className="text-3xl font-bold text-gradient mb-3">$45,000</div>
-              <div className="text-xs text-foreground/50">
-                Based on your 0.5 BTC collateral + reputation multiplier
-              </div>
-            </div>
-
-            {/* Floating card 3 */}
-            <div
-              className="absolute bottom-20 left-8 w-56 gradient-border rounded-2xl p-6 bg-background/80 backdrop-blur-sm animate-float"
-              style={{ animationDuration: '8s', animationDelay: '2s' }}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div className="text-2xl">⚡</div>
-                <div className="text-sm font-semibold text-accent">Active Loan</div>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-foreground/60">Amount</span>
-                  <span className="font-bold">12,500 kUSD</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-foreground/60">APR</span>
-                  <span className="font-bold text-green-400">3.5%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-foreground/60">Health</span>
-                  <span className="font-bold text-accent">Excellent</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Floating card 4 */}
-            <div
-              className="absolute bottom-0 right-12 w-48 gradient-border rounded-2xl p-5 bg-background/80 backdrop-blur-sm animate-float"
-              style={{ animationDuration: '9s', animationDelay: '3s' }}
-            >
-              <div className="text-2xl mb-2">🎯</div>
-              <div className="text-xs text-foreground/60 mb-2">Recent Achievement</div>
-              <div className="text-sm font-bold text-foreground mb-1">
-                6 Month Streak
-              </div>
-              <div className="text-xs text-foreground/50">
-                +100 reputation points
-              </div>
-            </div>
-
-            {/* Decorative floating particles */}
-            <div className="absolute top-20 left-20 w-3 h-3 bg-accent rounded-full animate-float blur-sm" style={{ animationDuration: '5s' }} />
-            <div className="absolute top-40 right-20 w-2 h-2 bg-primary rounded-full animate-float blur-sm" style={{ animationDuration: '6s', animationDelay: '1s' }} />
-            <div className="absolute bottom-40 left-32 w-4 h-4 bg-blue-400 rounded-full animate-float blur-sm" style={{ animationDuration: '7s', animationDelay: '2s' }} />
-            <div className="absolute bottom-20 right-32 w-3 h-3 bg-purple-400 rounded-full animate-float blur-sm" style={{ animationDuration: '8s', animationDelay: '3s' }} />
+            {/* Decorative floating particles around Bitcoin */}
+            <div className="absolute top-20 left-20 w-4 h-4 bg-accent rounded-full animate-float blur-sm" style={{ animationDuration: '5s' }} />
+            <div className="absolute top-40 right-20 w-3 h-3 bg-primary rounded-full animate-float blur-sm" style={{ animationDuration: '6s', animationDelay: '1s' }} />
+            <div className="absolute bottom-40 left-32 w-5 h-5 bg-accent/80 rounded-full animate-float blur-sm" style={{ animationDuration: '7s', animationDelay: '2s' }} />
+            <div className="absolute bottom-20 right-32 w-3 h-3 bg-emerald-400 rounded-full animate-float blur-sm" style={{ animationDuration: '8s', animationDelay: '3s' }} />
+            <div className="absolute top-1/2 left-10 w-2 h-2 bg-primary rounded-full animate-float blur-sm" style={{ animationDuration: '9s', animationDelay: '4s' }} />
+            <div className="absolute top-1/3 right-16 w-4 h-4 bg-accent/70 rounded-full animate-float blur-sm" style={{ animationDuration: '10s', animationDelay: '2.5s' }} />
           </div>
         </div>
       </div>

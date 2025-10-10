@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: 0 0% 3%;
+  --background: 0 0% 5%;
   --foreground: 0 0% 98%;
-  --primary: 142 76% 36%;
+  --primary: 142 76% 38%;
   --primary-foreground: 0 0% 98%;
-  --secondary: 142 76% 25%;
-  --accent: 142 86% 45%;
-  --muted: 0 0% 15%;
-  --border: 0 0% 20%;
+  --secondary: 142 76% 27%;
+  --accent: 142 86% 47%;
+  --muted: 0 0% 17%;
+  --border: 0 0% 22%;
 }
 
 body {

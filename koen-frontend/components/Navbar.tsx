@@ -1,9 +1,42 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import walletService from '../wallet-service';
 
 export default function Navbar() {
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
+
+  // On mount, check if wallet is already connected
+  useEffect(() => {
+    async function checkWallet() {
+      const data = await walletService.getCurrentWalletData();
+      setWalletAddress(data?.address || null);
+    }
+    checkWallet();
+  }, []);
+
+  // Connect wallet handler
+  const handleConnectWallet = async () => {
+    setConnecting(true);
+    try {
+      const info = await walletService.connectWallet();
+      setWalletAddress(info.address);
+    } catch (e) {
+      // Optionally show error to user
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  // Disconnect wallet handler
+  const handleDisconnectWallet = async () => {
+    await walletService.disconnectWallet();
+    setWalletAddress(null);
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
@@ -37,13 +70,31 @@ export default function Navbar() {
 
           {/* CTA Button */}
           <div className="hidden md:flex items-center">
-            <button className="px-6 py-2.5 bg-transparent border border-accent/50 hover:border-accent text-accent font-semibold rounded-lg transition-all hover:bg-accent/5 flex items-center gap-2">
-              {/* Wallet icon (SVG) */}
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
-              </svg>
-              Connect Wallet
-            </button>
+            {walletAddress ? (
+              <div className="flex items-center gap-2">
+                <span className="text-accent font-mono text-sm bg-accent/10 px-3 py-1 rounded-lg">
+                  {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                </span>
+                <button
+                  className="ml-2 px-3 py-1 text-xs rounded bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition"
+                  onClick={handleDisconnectWallet}
+                >
+                  Disconnect
+                </button>
+              </div>
+            ) : (
+              <button
+                className="group relative px-5 py-2 bg-transparent border border-accent/50 hover:border-accent text-accent font-semibold rounded-lg transition-all duration-300 hover:bg-accent/10 hover:shadow-lg hover:shadow-accent/20 flex items-center gap-2 overflow-hidden hover:scale-105 transform"
+                onClick={handleConnectWallet}
+                disabled={connecting}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-accent/0 via-accent/10 to-accent/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 relative z-10 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+                </svg>
+                <span className="relative z-10">{connecting ? 'Connecting...' : 'Connect Wallet'}</span>
+              </button>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -85,13 +136,31 @@ export default function Navbar() {
               Docs
             </a>
             <div className="pt-4">
-              <button className="w-full px-6 py-2.5 bg-transparent border border-accent/50 hover:border-accent text-accent font-semibold rounded-lg transition-all hover:bg-accent/5 flex items-center gap-2 justify-center">
-                {/* Wallet icon (SVG) */}
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
-                </svg>
-                Connect Wallet
-              </button>
+              {walletAddress ? (
+                <div className="flex items-center gap-2 justify-center">
+                  <span className="text-accent font-mono text-sm bg-accent/10 px-3 py-1 rounded-lg">
+                    {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                  </span>
+                  <button
+                    className="ml-2 px-3 py-1 text-xs rounded bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition"
+                    onClick={handleDisconnectWallet}
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="group relative w-full px-5 py-2 bg-transparent border border-accent/50 hover:border-accent text-accent font-semibold rounded-lg transition-all duration-300 hover:bg-accent/10 hover:shadow-lg hover:shadow-accent/20 flex items-center gap-2 justify-center overflow-hidden hover:scale-105 transform"
+                  onClick={handleConnectWallet}
+                  disabled={connecting}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-accent/0 via-accent/10 to-accent/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 relative z-10 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+                  </svg>
+                  <span className="relative z-10">{connecting ? 'Connecting...' : 'Connect Wallet'}</span>
+                </button>
+              )}
             </div>
           </div>
         )}

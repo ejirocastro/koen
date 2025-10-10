@@ -1,4 +1,10 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+
 export default function CTA() {
+  const router = useRouter();
+
   return (
     <section className="relative py-32 px-6 overflow-hidden">
       {/* Animated background */}
@@ -20,7 +26,10 @@ export default function CTA() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-          <button className="px-10 py-5 bg-accent hover:bg-accent/90 text-background font-bold text-lg rounded-lg transition-all glow hover:glow-strong transform hover:scale-105">
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="px-10 py-5 bg-accent hover:bg-accent/90 text-background font-bold text-lg rounded-lg transition-all glow hover:glow-strong transform hover:scale-105"
+          >
             Launch App
           </button>
           <button className="px-10 py-5 bg-transparent border-2 border-accent/50 hover:border-accent text-foreground font-bold text-lg rounded-lg transition-all hover:bg-accent/10">
