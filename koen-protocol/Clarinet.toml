@@ -5,10 +5,30 @@ authors = []
 telemetry = true
 cache_dir = './.cache'
 requirements = []
-[contracts.lending-pool_clar]
-path = 'contracts/lending-pool_clar.clar'
+[contracts.kusd-token]
+path = 'contracts/kusd-token.clar'
+clarity_version = 3
+epoch = '3.2'
+
+[contracts.oracle]
+path = 'contracts/oracle.clar'
+clarity_version = 3
+epoch = '3.2'
+
+[contracts.p2p-marketplace]
+path = 'contracts/p2p-marketplace.clar'
 clarity_version = 3
 epoch = 'latest'
+
+[contracts.reputation-sbt]
+path = 'contracts/reputation-sbt.clar'
+clarity_version = 3
+epoch = '3.2'
+
+[contracts.sbtc-token]
+path = 'contracts/sbtc-token.clar'
+clarity_version = 3
+epoch = '3.2'
 [repl.analysis]
 passes = ['check_checker']
 
