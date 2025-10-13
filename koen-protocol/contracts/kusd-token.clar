@@ -29,12 +29,20 @@
 
 ;; SIP-010 Standard Functions
 
-(define-public (transfer (amount uint) (sender principal) (recipient principal) (memo (optional (buff 34))))
+(define-public (transfer
+    (amount uint)
+    (sender principal)
+    (recipient principal)
+    (memo (optional (buff 34)))
+  )
   (begin
     (asserts! (is-eq tx-sender sender) ERR_UNAUTHORIZED)
     (asserts! (> amount u0) ERR_INVALID_AMOUNT)
     (try! (ft-transfer? kusd amount sender recipient))
-    (match memo to-print (print to-print) 0x)
+    (match memo
+      to-print (print to-print)
+      0x
+    )
     (ok true)
   )
 )
@@ -77,7 +85,8 @@
 
 ;; Faucet function for easy testing - mint 1000 kUSD to caller
 (define-public (faucet)
-  (let ((faucet-amount u1000000000)) ;; 1000 kUSD = 1,000,000,000 micro-units (6 decimals)
+  (let ((faucet-amount u1000000000))
+    ;; 1000 kUSD = 1,000,000,000 micro-units (6 decimals)
     (try! (ft-mint? kusd faucet-amount tx-sender))
     (ok faucet-amount)
   )
