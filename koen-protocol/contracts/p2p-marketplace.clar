@@ -295,7 +295,7 @@
             )
 
             ;; Lock borrower's sBTC collateral in contract
-            (try! (contract-call? .sbtc-token transfer collateral-amount tx-sender
+            (try! (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer collateral-amount tx-sender
                 (as-contract tx-sender) none
             ))
 
@@ -342,7 +342,7 @@
             )
 
             ;; Return sBTC collateral to borrower
-            (try! (as-contract (contract-call? .sbtc-token transfer
+            (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
                 (get collateral-deposited request) tx-sender
                 (get borrower request) none
             )))
@@ -568,7 +568,7 @@
                 ))
 
                 ;; Return sBTC collateral to borrower
-                (try! (as-contract (contract-call? .sbtc-token transfer (get collateral-amount loan)
+                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer (get collateral-amount loan)
                     tx-sender (get borrower loan) none
                 )))
 
@@ -645,16 +645,16 @@
                     ;; Transfer collateral: logic depends on who liquidates
                     (if (is-eq caller (get lender loan))
                         ;; Lender liquidates - gets all collateral
-                        (try! (as-contract (contract-call? .sbtc-token transfer
+                        (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
                             (get collateral-amount loan) tx-sender
                             (get lender loan) none
                         )))
                         ;; Third party liquidates - lender gets reduced amount, liquidator gets bonus
                         (begin
-                            (try! (as-contract (contract-call? .sbtc-token transfer lender-amount
+                            (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer lender-amount
                                 tx-sender (get lender loan) none
                             )))
-                            (try! (as-contract (contract-call? .sbtc-token transfer
+                            (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
                                 liquidation-bonus-amount tx-sender caller
                                 none
                             )))
