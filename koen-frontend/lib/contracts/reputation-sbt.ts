@@ -1,5 +1,5 @@
 import {
-  callReadOnlyFunction,
+  fetchCallReadOnlyFunction,
   cvToJSON,
   uintCV,
   principalCV,
@@ -18,7 +18,7 @@ export interface ReputationData {
   score: number;
   tier: ReputationTier;
   multiplier: number;
-  hasS bt: boolean;
+  hasSbt: boolean;
   tokenId: number | null;
 }
 
@@ -44,7 +44,7 @@ export async function getReputation(
   try {
     const [contractAddress, contractName] = CONTRACTS.REPUTATION_SBT.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-reputation',
@@ -55,25 +55,30 @@ export async function getReputation(
 
     const data = cvToJSON(result);
 
-    if (!data.value || data.value === null) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let reputation = data.value;
+    if (reputation && reputation.value) {
+      reputation = reputation.value;
+    }
+
+    if (!reputation) {
       // User doesn't have a reputation SBT yet
       return {
         score: 0,
-        tier: 'bronze',
+        tier: 'bronze' as ReputationTier,
         multiplier: 0,
         hasSbt: false,
         tokenId: null,
       };
     }
 
-    const reputation = data.value;
-    const score = Number(reputation.score.value);
+    const score = Number(reputation.score?.value || 0);
     const tier = getReputationTierFromScore(score);
 
     return {
       score,
       tier,
-      multiplier: Number(reputation.multiplier.value),
+      multiplier: Number(reputation.multiplier?.value || 0),
       hasSbt: true,
       tokenId: Number(reputation['token-id']?.value) || null,
     };
@@ -93,7 +98,7 @@ export async function getReputationScore(
   try {
     const [contractAddress, contractName] = CONTRACTS.REPUTATION_SBT.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-score',
@@ -104,11 +109,17 @@ export async function getReputationScore(
 
     const data = cvToJSON(result);
 
-    if (!data.value || data.success === false) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let score = data.value;
+    if (score && typeof score === 'object' && score.value !== undefined) {
+      score = score.value;
+    }
+
+    if (!score) {
       return 0;
     }
 
-    return Number(data.value.value);
+    return Number(score);
   } catch (error) {
     console.error('Error fetching reputation score:', error);
     return 0;
@@ -125,7 +136,7 @@ export async function getReputationTier(
   try {
     const [contractAddress, contractName] = CONTRACTS.REPUTATION_SBT.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-tier',
@@ -136,11 +147,17 @@ export async function getReputationTier(
 
     const data = cvToJSON(result);
 
-    if (!data.value || data.success === false) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let tier = data.value;
+    if (tier && typeof tier === 'object' && tier.value !== undefined) {
+      tier = tier.value;
+    }
+
+    if (!tier) {
       return 'bronze';
     }
 
-    const tierString = data.value.value.toLowerCase();
+    const tierString = tier.toLowerCase();
     if (tierString === 'gold' || tierString === 'silver' || tierString === 'bronze') {
       return tierString as ReputationTier;
     }
@@ -162,7 +179,7 @@ export async function getReputationMultiplier(
   try {
     const [contractAddress, contractName] = CONTRACTS.REPUTATION_SBT.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-multiplier',
@@ -173,11 +190,17 @@ export async function getReputationMultiplier(
 
     const data = cvToJSON(result);
 
-    if (!data.value || data.success === false) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let multiplier = data.value;
+    if (multiplier && typeof multiplier === 'object' && multiplier.value !== undefined) {
+      multiplier = multiplier.value;
+    }
+
+    if (!multiplier) {
       return 0;
     }
 
-    return Number(data.value.value);
+    return Number(multiplier);
   } catch (error) {
     console.error('Error fetching reputation multiplier:', error);
     return 0;
@@ -194,7 +217,7 @@ export async function hasReputationSbt(
   try {
     const [contractAddress, contractName] = CONTRACTS.REPUTATION_SBT.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'has-sbt',

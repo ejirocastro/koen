@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter, Space_Grotesk, Outfit } from 'next/font/google';
 import './globals.css';
+import { QueryProvider } from '@/lib/providers/query-provider';
+import { Toaster } from 'react-hot-toast';
 
 const inter = Inter({ subsets: ['latin'] });
 const spaceGrotesk = Space_Grotesk({
@@ -27,7 +29,32 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} ${spaceGrotesk.variable} ${outfit.variable}`}>
-        {children}
+        <QueryProvider>
+          {children}
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#1E2329',
+                color: '#fff',
+                border: '1px solid #2B3139',
+              },
+              success: {
+                iconTheme: {
+                  primary: '#0ECB81',
+                  secondary: '#fff',
+                },
+              },
+              error: {
+                iconTheme: {
+                  primary: '#F6465D',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+        </QueryProvider>
       </body>
     </html>
   );

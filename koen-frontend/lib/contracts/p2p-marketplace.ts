@@ -1,5 +1,5 @@
 import {
-  callReadOnlyFunction,
+  fetchCallReadOnlyFunction,
   cvToJSON,
   uintCV,
   principalCV,
@@ -57,9 +57,11 @@ export interface ActiveLoan {
   borrower: string;
   amount: number; // In kUSD
   apr: number; // Percentage
+  duration: number; // In blocks
   startBlock: number;
   endBlock: number;
   collateral: number; // In sBTC
+  collateralRatio: number; // Percentage (e.g., 150)
   status: string;
   repaidAmount: number; // In kUSD
 }
@@ -70,6 +72,10 @@ export interface MarketplaceStats {
   totalLoansCreated: number;
   totalVolumeLent: number; // In kUSD
   totalInterestEarned: number; // In kUSD
+  totalVolume: number; // Alias for totalVolumeLent
+  totalLoans: number; // Alias for totalLoansCreated
+  activeOffers: number; // Placeholder - would need separate query
+  activeRequests: number; // Placeholder - would need separate query
 }
 
 // ============================================
@@ -86,7 +92,7 @@ export async function getLendingOffer(
   try {
     const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-lending-offer',
@@ -133,7 +139,7 @@ export async function getBorrowRequest(
   try {
     const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-borrow-request',
@@ -178,7 +184,7 @@ export async function getActiveLoan(
   try {
     const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-active-loan',
@@ -195,6 +201,10 @@ export async function getActiveLoan(
 
     const loan = data.value;
 
+    const startBlock = Number(loan['start-block'].value);
+    const endBlock = Number(loan['end-block'].value);
+    const duration = endBlock - startBlock;
+
     return {
       loanId,
       offerId: Number(loan['offer-id'].value),
@@ -203,9 +213,11 @@ export async function getActiveLoan(
       borrower: loan.borrower.value,
       amount: microKusdToKusd(BigInt(loan.amount.value)),
       apr: bpsToPercentage(Number(loan.apr.value)),
-      startBlock: Number(loan['start-block'].value),
-      endBlock: Number(loan['end-block'].value),
+      duration,
+      startBlock,
+      endBlock,
       collateral: satoshisToSbtc(BigInt(loan.collateral.value)),
+      collateralRatio: Number(loan['collateral-ratio']?.value || 150), // Default to 150% if not present
       status: loan.status.value,
       repaidAmount: microKusdToKusd(BigInt(loan['repaid-amount'].value)),
     };
@@ -224,7 +236,7 @@ export async function getMarketplaceStats(
   try {
     const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-marketplace-stats',
@@ -235,18 +247,31 @@ export async function getMarketplaceStats(
 
     const data = cvToJSON(result);
 
-    if (!data.value) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let stats = data.value;
+    if (stats && stats.value) {
+      stats = stats.value;
+    }
+
+    if (!stats) {
       return null;
     }
 
-    const stats = data.value;
+    const totalVolumeLent = microKusdToKusd(BigInt(stats['total-volume-lent']?.value || 0));
+    const totalLoansCreated = Number(stats['total-loans-created']?.value || 0);
 
     return {
-      totalOffersCreated: Number(stats['total-offers-created'].value),
-      totalRequestsCreated: Number(stats['total-requests-created'].value),
-      totalLoansCreated: Number(stats['total-loans-created'].value),
-      totalVolumeLent: microKusdToKusd(BigInt(stats['total-volume-lent'].value)),
-      totalInterestEarned: microKusdToKusd(BigInt(stats['total-interest-earned'].value)),
+      totalOffersCreated: Number(stats['total-offers-created']?.value || 0),
+      totalRequestsCreated: Number(stats['total-requests-created']?.value || 0),
+      totalLoansCreated,
+      totalVolumeLent,
+      totalInterestEarned: microKusdToKusd(BigInt(stats['total-interest-earned']?.value || 0)),
+      // Aliases for compatibility
+      totalVolume: totalVolumeLent,
+      totalLoans: totalLoansCreated,
+      // Placeholders - would need to count actual active offers/requests
+      activeOffers: 0,
+      activeRequests: 0,
     };
   } catch (error) {
     console.error('Error fetching marketplace stats:', error);
@@ -264,7 +289,7 @@ export async function getLoanHealthFactor(
   try {
     const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-loan-health-factor',
@@ -275,12 +300,18 @@ export async function getLoanHealthFactor(
 
     const data = cvToJSON(result);
 
-    if (!data.value || data.success === false) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let healthFactor = data.value;
+    if (healthFactor && typeof healthFactor === 'object' && healthFactor.value !== undefined) {
+      healthFactor = healthFactor.value;
+    }
+
+    if (!healthFactor) {
       return null;
     }
 
     // Health factor is returned in basis points (e.g., 15000 = 150%)
-    return Number(data.value.value) / 100;
+    return Number(healthFactor) / 100;
   } catch (error) {
     console.error('Error fetching loan health factor:', error);
     return null;
@@ -297,7 +328,7 @@ export async function isLoanLiquidatable(
   try {
     const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'is-loan-liquidatable',
@@ -324,7 +355,7 @@ export async function getLoanCurrentDebt(
   try {
     const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-loan-current-debt',
@@ -335,11 +366,17 @@ export async function getLoanCurrentDebt(
 
     const data = cvToJSON(result);
 
-    if (!data.value || data.success === false) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let debt = data.value;
+    if (debt && typeof debt === 'object' && debt.value !== undefined) {
+      debt = debt.value;
+    }
+
+    if (!debt) {
       return null;
     }
 
-    return microKusdToKusd(BigInt(data.value.value));
+    return microKusdToKusd(BigInt(debt));
   } catch (error) {
     console.error('Error fetching loan current debt:', error);
     return null;
@@ -356,7 +393,7 @@ export async function getUserActiveLoans(
   try {
     const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-user-active-loans',

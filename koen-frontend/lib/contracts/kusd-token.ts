@@ -1,5 +1,5 @@
 import {
-  callReadOnlyFunction,
+  fetchCallReadOnlyFunction,
   cvToJSON,
   uintCV,
   principalCV,
@@ -35,7 +35,7 @@ export async function getKusdBalance(
   try {
     const [contractAddress, contractName] = CONTRACTS.KUSD_TOKEN.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-balance',
@@ -46,11 +46,17 @@ export async function getKusdBalance(
 
     const data = cvToJSON(result);
 
-    if (!data.value || data.success === false) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let balance = data.value;
+    if (balance && typeof balance === 'object' && balance.value !== undefined) {
+      balance = balance.value;
+    }
+
+    if (!balance) {
       return 0;
     }
 
-    return microKusdToKusd(BigInt(data.value.value));
+    return microKusdToKusd(BigInt(balance));
   } catch (error) {
     console.error('Error fetching kUSD balance:', error);
     return 0;
@@ -67,7 +73,7 @@ export async function getKusdMetadata(
     const [contractAddress, contractName] = CONTRACTS.KUSD_TOKEN.split('.');
 
     // Get name
-    const nameResult = await callReadOnlyFunction({
+    const nameResult = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-name',
@@ -77,7 +83,7 @@ export async function getKusdMetadata(
     });
 
     // Get symbol
-    const symbolResult = await callReadOnlyFunction({
+    const symbolResult = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-symbol',
@@ -87,7 +93,7 @@ export async function getKusdMetadata(
     });
 
     // Get decimals
-    const decimalsResult = await callReadOnlyFunction({
+    const decimalsResult = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-decimals',
@@ -97,7 +103,7 @@ export async function getKusdMetadata(
     });
 
     // Get token URI
-    const uriResult = await callReadOnlyFunction({
+    const uriResult = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-token-uri',
@@ -132,7 +138,7 @@ export async function getKusdTotalSupply(
   try {
     const [contractAddress, contractName] = CONTRACTS.KUSD_TOKEN.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-total-supply',
@@ -143,11 +149,17 @@ export async function getKusdTotalSupply(
 
     const data = cvToJSON(result);
 
-    if (!data.value || data.success === false) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let supply = data.value;
+    if (supply && typeof supply === 'object' && supply.value !== undefined) {
+      supply = supply.value;
+    }
+
+    if (!supply) {
       return 0;
     }
 
-    return microKusdToKusd(BigInt(data.value.value));
+    return microKusdToKusd(BigInt(supply));
   } catch (error) {
     console.error('Error fetching kUSD total supply:', error);
     return 0;

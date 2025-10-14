@@ -1,5 +1,5 @@
 import {
-  callReadOnlyFunction,
+  fetchCallReadOnlyFunction,
   cvToJSON,
   uintCV,
   PostConditionMode,
@@ -32,7 +32,7 @@ export async function getSbtcPrice(
   try {
     const [contractAddress, contractName] = CONTRACTS.ORACLE.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-sbtc-price',
@@ -43,13 +43,19 @@ export async function getSbtcPrice(
 
     const data = cvToJSON(result);
 
-    if (!data.value || data.success === false) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let price = data.value;
+    if (price && typeof price === 'object' && price.value !== undefined) {
+      price = price.value;
+    }
+
+    if (!price) {
       return null;
     }
 
     // Price is stored with 8 decimals (like sBTC)
     // e.g., 4000000000000 = $40,000.00
-    return Number(data.value.value) / 100_000_000;
+    return Number(price) / 100_000_000;
   } catch (error) {
     console.error('Error fetching sBTC price:', error);
     return null;
@@ -67,7 +73,7 @@ export async function getOracleData(
     const [contractAddress, contractName] = CONTRACTS.ORACLE.split('.');
 
     // Get price
-    const priceResult = await callReadOnlyFunction({
+    const priceResult = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-sbtc-price',
@@ -77,7 +83,7 @@ export async function getOracleData(
     });
 
     // Get last update block
-    const lastUpdateResult = await callReadOnlyFunction({
+    const lastUpdateResult = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-last-update-block',
@@ -87,7 +93,7 @@ export async function getOracleData(
     });
 
     // Get decimals
-    const decimalsResult = await callReadOnlyFunction({
+    const decimalsResult = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-decimals',
@@ -97,7 +103,7 @@ export async function getOracleData(
     });
 
     // Check if price is fresh
-    const isFreshResult = await callReadOnlyFunction({
+    const isFreshResult = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'is-price-fresh',
@@ -111,11 +117,17 @@ export async function getOracleData(
     const decimalsData = cvToJSON(decimalsResult);
     const isFreshData = cvToJSON(isFreshResult);
 
-    if (!priceData.value || priceData.success === false) {
+    // Handle response wrapper for price
+    let priceValue = priceData.value;
+    if (priceValue && typeof priceValue === 'object' && priceValue.value !== undefined) {
+      priceValue = priceValue.value;
+    }
+
+    if (!priceValue) {
       return null;
     }
 
-    const price = Number(priceData.value.value) / 100_000_000;
+    const price = Number(priceValue) / 100_000_000;
     const lastUpdateBlock = Number(lastUpdateData.value?.value) || 0;
     const decimals = Number(decimalsData.value?.value) || 8;
     const isFresh = isFreshData.value === true;
@@ -142,7 +154,7 @@ export async function getSbtcPriceAtBlock(
   try {
     const [contractAddress, contractName] = CONTRACTS.ORACLE.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-price-at-block',
@@ -153,11 +165,17 @@ export async function getSbtcPriceAtBlock(
 
     const data = cvToJSON(result);
 
-    if (!data.value || data.success === false) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let price = data.value;
+    if (price && typeof price === 'object' && price.value !== undefined) {
+      price = price.value;
+    }
+
+    if (!price) {
       return null;
     }
 
-    return Number(data.value.value) / 100_000_000;
+    return Number(price) / 100_000_000;
   } catch (error) {
     console.error('Error fetching sBTC price at block:', error);
     return null;
@@ -177,7 +195,7 @@ export async function getSbtcValueInUsd(
     // Convert sBTC to satoshis (8 decimals)
     const satoshis = Math.floor(sbtcAmount * 100_000_000);
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-sbtc-value',
@@ -188,12 +206,18 @@ export async function getSbtcValueInUsd(
 
     const data = cvToJSON(result);
 
-    if (!data.value || data.success === false) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let value = data.value;
+    if (value && typeof value === 'object' && value.value !== undefined) {
+      value = value.value;
+    }
+
+    if (!value) {
       return null;
     }
 
     // Result is in USD with 8 decimals
-    return Number(data.value.value) / 100_000_000;
+    return Number(value) / 100_000_000;
   } catch (error) {
     console.error('Error calculating sBTC value:', error);
     return null;
@@ -213,7 +237,7 @@ export async function getSbtcAmountForUsd(
     // Convert USD to 8 decimal format
     const usdWith8Decimals = Math.floor(usdValue * 100_000_000);
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-sbtc-amount',
@@ -224,12 +248,18 @@ export async function getSbtcAmountForUsd(
 
     const data = cvToJSON(result);
 
-    if (!data.value || data.success === false) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let amount = data.value;
+    if (amount && typeof amount === 'object' && amount.value !== undefined) {
+      amount = amount.value;
+    }
+
+    if (!amount) {
       return null;
     }
 
     // Result is in satoshis, convert to sBTC
-    return Number(data.value.value) / 100_000_000;
+    return Number(amount) / 100_000_000;
   } catch (error) {
     console.error('Error calculating sBTC amount:', error);
     return null;
@@ -245,7 +275,7 @@ export async function isPriceFresh(
   try {
     const [contractAddress, contractName] = CONTRACTS.ORACLE.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'is-price-fresh',
@@ -293,7 +323,7 @@ export async function getLastUpdateBlock(
   try {
     const [contractAddress, contractName] = CONTRACTS.ORACLE.split('.');
 
-    const result = await callReadOnlyFunction({
+    const result = await fetchCallReadOnlyFunction({
       contractAddress,
       contractName,
       functionName: 'get-last-update-block',
@@ -304,11 +334,17 @@ export async function getLastUpdateBlock(
 
     const data = cvToJSON(result);
 
-    if (!data.value || data.success === false) {
+    // Handle response wrapper - could be data.value.value or data.value
+    let block = data.value;
+    if (block && typeof block === 'object' && block.value !== undefined) {
+      block = block.value;
+    }
+
+    if (!block) {
       return null;
     }
 
-    return Number(data.value.value);
+    return Number(block);
   } catch (error) {
     console.error('Error fetching last update block:', error);
     return null;
