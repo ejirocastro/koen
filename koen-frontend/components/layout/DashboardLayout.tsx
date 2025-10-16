@@ -59,9 +59,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Main Content */}
         <main className={`
           flex-1 transition-all duration-300 mt-14
-          lg:${sidebarCollapsed ? 'ml-16' : 'ml-60'}
           px-4 sm:px-6 lg:px-8
           py-4 sm:py-6 lg:py-8
+          ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-60'}
         `}>
           {children}
         </main>
