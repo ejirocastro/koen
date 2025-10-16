@@ -1,11 +1,11 @@
 // Contract addresses - Testnet Deployment
-// Deployed on: 2025-10-13
+// Deployed on: 2025-10-15
 // Network: Stacks Testnet
 export const CONTRACTS = {
-  // Your deployed contracts on testnet
-  P2P_MARKETPLACE: 'ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3.p2p-marketplace',
+  // Core marketplace contracts - V4 with automatic reputation
+  P2P_MARKETPLACE: 'ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3.p2p-marketplace-v4',
+  REPUTATION_SBT: 'ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3.reputation-sbt-v4',
   KUSD_TOKEN: 'ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3.kusd-token',
-  REPUTATION_SBT: 'ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3.reputation-sbt',
   ORACLE: 'ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3.oracle',
 
   // Official testnet sBTC (automatically remapped by Clarinet)

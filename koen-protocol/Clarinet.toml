@@ -7,6 +7,10 @@ cache_dir = './.cache'
 
 [[project.requirements]]
 contract_id = 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-deposit'
+
+[[project.requirements]]
+contract_id = 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token'
+
 [contracts.kusd-token]
 path = 'contracts/kusd-token.clar'
 clarity_version = 3
@@ -26,6 +30,17 @@ epoch = '3.2'
 path = 'contracts/reputation-sbt.clar'
 clarity_version = 3
 epoch = '3.2'
+
+[contracts.reputation-sbt-v3]
+path = 'contracts/reputation-sbt.clar'
+clarity_version = 3
+epoch = '3.2'
+
+[contracts.p2p-marketplace-v3]
+path = 'contracts/p2p-marketplace.clar'
+clarity_version = 3
+epoch = '3.2'
+
 [repl.analysis]
 passes = ['check_checker']
 
@@ -38,3 +53,13 @@ callee_filter = false
 [repl.remote_data]
 enabled = false
 api_url = 'https://api.hiro.so'
+
+[contracts.reputation-sbt-v4]
+path = 'contracts/reputation-sbt.clar'
+clarity_version = 3
+epoch = '3.2'
+
+[contracts.p2p-marketplace-v4]
+path = 'contracts/p2p-marketplace.clar'
+clarity_version = 3
+epoch = '3.2'

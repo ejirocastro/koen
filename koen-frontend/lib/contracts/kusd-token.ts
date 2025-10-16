@@ -177,7 +177,7 @@ export async function transferKusd(params: {
   amount: number; // In kUSD
   recipient: string;
   memo?: string;
-}): Promise<any> {
+}): Promise<{ txId: string }> {
   const [contractAddress, contractName] = CONTRACTS.KUSD_TOKEN.split('.');
 
   const amountMicro = kusdToMicroKusd(params.amount);
@@ -188,73 +188,84 @@ export async function transferKusd(params: {
     // TODO: Add memo parameter if contract supports it
   ];
 
-  const options = {
-    contractAddress,
-    contractName,
-    functionName: 'transfer',
-    functionArgs,
-    postConditionMode: PostConditionMode.Deny,
-    onFinish: (data: any) => {
-      console.log('kUSD transfer transaction submitted:', data.txId);
-      return data;
-    },
-    onCancel: () => {
-      throw new Error('Transaction cancelled by user');
-    },
-  };
+  return new Promise((resolve, reject) => {
+    const options = {
+      contractAddress,
+      contractName,
+      functionName: 'transfer',
+      functionArgs,
+      postConditionMode: PostConditionMode.Deny,
+      onFinish: (data: any) => {
+        console.log('kUSD transfer transaction submitted:', data.txId);
+        resolve({ txId: data.txId });
+      },
+      onCancel: () => {
+        reject(new Error('Transaction cancelled by user'));
+      },
+    };
 
-  return await openContractCall(options);
+    openContractCall(options);
+  });
 }
 
 /**
  * Mint kUSD (test/faucet function - only available in testnet)
  * Note: This may not be available in production
  */
-export async function mintKusd(amount: number): Promise<any> {
+export async function mintKusd(amount: number): Promise<{ txId: string }> {
   const [contractAddress, contractName] = CONTRACTS.KUSD_TOKEN.split('.');
 
   const amountMicro = kusdToMicroKusd(amount);
 
-  const options = {
-    contractAddress,
-    contractName,
-    functionName: 'mint',
-    functionArgs: [uintCV(amountMicro.toString())],
-    postConditionMode: PostConditionMode.Allow, // Allow for faucet
-    onFinish: (data: any) => {
-      console.log('kUSD mint transaction submitted:', data.txId);
-      return data;
-    },
-    onCancel: () => {
-      throw new Error('Transaction cancelled by user');
-    },
-  };
+  return new Promise((resolve, reject) => {
+    const options = {
+      contractAddress,
+      contractName,
+      functionName: 'mint',
+      functionArgs: [uintCV(amountMicro.toString())],
+      postConditionMode: PostConditionMode.Allow, // Allow for faucet
+      onFinish: (data: any) => {
+        console.log('kUSD mint transaction submitted:', data.txId);
+        resolve({ txId: data.txId });
+      },
+      onCancel: () => {
+        reject(new Error('Transaction cancelled by user'));
+      },
+    };
 
-  return await openContractCall(options);
+    openContractCall(options);
+  });
 }
 
 /**
  * Request kUSD from faucet (if available)
  * This is a common pattern for testnet tokens
  */
-export async function requestKusdFaucet(): Promise<any> {
+export async function requestKusdFaucet(): Promise<{ txId: string }> {
   const [contractAddress, contractName] = CONTRACTS.KUSD_TOKEN.split('.');
 
-  // Try to call faucet function (common name)
-  const options = {
-    contractAddress,
-    contractName,
-    functionName: 'faucet',
-    functionArgs: [],
-    postConditionMode: PostConditionMode.Allow,
-    onFinish: (data: any) => {
-      console.log('kUSD faucet transaction submitted:', data.txId);
-      return data;
-    },
-    onCancel: () => {
-      throw new Error('Transaction cancelled by user');
-    },
-  };
+  // Import network helper
+  const { getNetwork } = await import('../network');
+  const network = getNetwork();
 
-  return await openContractCall(options);
+  return new Promise((resolve, reject) => {
+    // Try to call faucet function (common name)
+    const options = {
+      network, // CRITICAL: Explicitly set network to testnet
+      contractAddress,
+      contractName,
+      functionName: 'faucet',
+      functionArgs: [],
+      postConditionMode: PostConditionMode.Allow,
+      onFinish: (data: any) => {
+        console.log('kUSD faucet transaction submitted:', data.txId);
+        resolve({ txId: data.txId });
+      },
+      onCancel: () => {
+        reject(new Error('Transaction cancelled by user'));
+      },
+    };
+
+    openContractCall(options);
+  });
 }

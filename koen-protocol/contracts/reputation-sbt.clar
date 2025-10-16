@@ -100,7 +100,8 @@
 
     ;; SECURITY: Check burn cooldown (prevents gaming after liquidation)
     (match (map-get? burn-cooldowns user)
-      cooldown-block (asserts! (>= stacks-block-height cooldown-block) ERR_BURN_COOLDOWN_ACTIVE)
+      cooldown-block
+      (asserts! (>= stacks-block-height cooldown-block) ERR_BURN_COOLDOWN_ACTIVE)
       true ;; No cooldown exists, proceed
     )
 
@@ -187,6 +188,101 @@
       cooldown-until: (+ stacks-block-height BURN_COOLDOWN_BLOCKS),
     })
     (ok true)
+  )
+)
+
+;; ============================================
+;; AUTOMATIC REPUTATION MANAGEMENT
+;; ============================================
+
+;; Automatically manage reputation (mint or update) based on marketplace activity
+;; Can ONLY be called by the marketplace contract
+;; Users never need to manually manage their reputation - it's a side effect of marketplace usage
+(define-public (auto-manage-reputation
+    (user principal)
+    (score uint)
+    (tier (string-ascii 10))
+  )
+  (begin
+    ;; SECURITY: Only marketplace can call this
+    (asserts! (is-authorized-minter) ERR_UNAUTHORIZED)
+
+    ;; Validate score and tier
+    (asserts! (and (>= score BRONZE_MIN_SCORE) (<= score MAX_SCORE))
+      ERR_INVALID_SCORE
+    )
+    (asserts! (is-valid-tier tier) ERR_INVALID_TIER)
+    (asserts! (is-valid-score-for-tier score tier) ERR_INVALID_SCORE)
+
+    ;; Check if user already has reputation
+    (match (map-get? reputation-data user)
+      ;; User has reputation - UPDATE
+      current-data
+      (begin
+        ;; Update reputation data
+        (map-set reputation-data user
+          (merge current-data {
+            score: score,
+            tier: tier,
+            last-updated: stacks-block-height,
+          })
+        )
+
+        ;; Emit event
+        (print {
+          event: "reputation-auto-updated",
+          user: user,
+          old-score: (get score current-data),
+          new-score: score,
+          old-tier: (get tier current-data),
+          new-tier: tier,
+          block: stacks-block-height,
+        })
+
+        (ok true)
+      )
+      ;; User has NO reputation - MINT
+      (let ((token-id (var-get next-token-id)))
+        ;; SECURITY: Check burn cooldown (prevents gaming after liquidation)
+        (match (map-get? burn-cooldowns user)
+          cooldown-block
+          (asserts! (>= stacks-block-height cooldown-block)
+            ERR_BURN_COOLDOWN_ACTIVE
+          )
+          true ;; No cooldown exists, proceed
+        )
+
+        ;; Mint the NFT
+        (try! (nft-mint? reputation-sbt token-id user))
+
+        ;; Store reputation data
+        (map-set reputation-data user {
+          score: score,
+          tier: tier,
+          token-id: token-id,
+          minted-at: stacks-block-height,
+          last-updated: stacks-block-height,
+        })
+
+        ;; Store token ownership
+        (map-set token-owner token-id user)
+
+        ;; Increment token ID
+        (var-set next-token-id (+ token-id u1))
+
+        ;; Emit event
+        (print {
+          event: "reputation-auto-minted",
+          user: user,
+          token-id: token-id,
+          score: score,
+          tier: tier,
+          block: stacks-block-height,
+        })
+
+        (ok true)
+      )
+    )
   )
 )
 

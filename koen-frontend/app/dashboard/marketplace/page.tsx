@@ -2,20 +2,14 @@
 
 import { useState } from 'react';
 import { useActiveOffers, useActiveRequests, useMarketplaceStats } from '@/lib/hooks';
-import {
-  microKusdToKusd,
-  satoshisToSbtc,
-  bpsToPercentage,
-  blocksToDays,
-} from '@/lib/utils/format-helpers';
 
 export default function MarketplacePage() {
   const [activeTab, setActiveTab] = useState<'offers' | 'requests'>('offers');
   const [filterAsset, setFilterAsset] = useState<'all' | 'sBTC' | 'kUSD'>('all');
 
   // Fetch real data from blockchain
-  const { data: offers, isLoading: offersLoading } = useActiveOffers(1, 50);
-  const { data: requests, isLoading: requestsLoading } = useActiveRequests(1, 50);
+  const { data: offers, isLoading: offersLoading } = useActiveOffers(50);
+  const { data: requests, isLoading: requestsLoading } = useActiveRequests(50);
   const { data: stats } = useMarketplaceStats();
 
   const isLoading = offersLoading || requestsLoading;
@@ -114,19 +108,19 @@ export default function MarketplacePage() {
                       <td className="px-4 py-4 text-right">
                         <div className="flex flex-col items-end">
                           <span className="text-sm text-white font-semibold tabular-nums">
-                            ${microKusdToKusd(offer.amount).toLocaleString()}
+                            ${offer.amount.toLocaleString()}
                           </span>
                           <span className="text-xs text-[#848E9C]">kUSD</span>
                         </div>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <span className="text-sm text-emerald-500 font-semibold tabular-nums">
-                          {bpsToPercentage(offer.apr).toFixed(1)}%
+                          {offer.apr.toFixed(1)}%
                         </span>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <span className="text-sm text-white tabular-nums">
-                          {blocksToDays(offer.duration)} days
+                          {Math.round(offer.duration / 144)} days
                         </span>
                       </td>
                       <td className="px-4 py-4 text-right">
@@ -191,24 +185,24 @@ export default function MarketplacePage() {
                       <td className="px-4 py-4 text-right">
                         <div className="flex flex-col items-end">
                           <span className="text-sm text-white font-semibold tabular-nums">
-                            ${microKusdToKusd(request.amount).toLocaleString()}
+                            ${request.amount.toLocaleString()}
                           </span>
                           <span className="text-xs text-[#848E9C]">kUSD</span>
                         </div>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <span className="text-sm text-orange-500 font-semibold tabular-nums">
-                          {bpsToPercentage(request.maxApr).toFixed(1)}%
+                          {request.maxApr.toFixed(1)}%
                         </span>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <span className="text-sm text-white tabular-nums">
-                          {blocksToDays(request.duration)} days
+                          {Math.round(request.duration / 144)} days
                         </span>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <span className="text-sm text-[#848E9C]">
-                          {satoshisToSbtc(request.collateralDeposited).toFixed(4)} sBTC
+                          {request.collateralDeposited.toFixed(4)} sBTC
                         </span>
                       </td>
                       <td className="px-4 py-4 text-center">
@@ -292,7 +286,7 @@ export default function MarketplacePage() {
             </svg>
           </div>
           <div className="text-2xl font-bold text-white tabular-nums mb-1">
-            ${microKusdToKusd(stats?.totalVolumeLent || 0).toLocaleString()}
+            ${(stats?.totalVolumeLent || 0).toLocaleString()}
           </div>
           <div className="text-xs text-[#0ECB81]">Lent</div>
         </div>

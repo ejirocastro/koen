@@ -1,16 +1,42 @@
+/**
+ * Create Offer/Request Page
+ *
+ * Main page for creating new lending offers and borrow requests.
+ * Users can switch between two tabs:
+ * - Lending Offer: Lend kUSD to borrowers at specified terms
+ * - Borrow Request: Request kUSD loan by depositing sBTC collateral
+ *
+ * Features:
+ * - Form validation with balance checks
+ * - Oracle price update functionality (required for testnet)
+ * - kUSD faucet for testing
+ * - Transaction notifications with explorer links
+ * - Terms and conditions agreement
+ * - Real-time loan preview with interest calculations
+ *
+ * Important Notes:
+ * - Oracle price must be fresh (<144 blocks old) to create offers/requests
+ * - Lenders need sufficient kUSD balance
+ * - Borrowers need sufficient sBTC for collateral
+ */
 'use client';
 
 import { useState } from 'react';
 import { useWallet, useTokenBalances, useMarketplaceStats } from '@/lib/hooks';
 import { microKusdToKusd, satoshisToSbtc, daysToBlocks, percentageToBps, sbtcToSatoshis, kusdToMicroKusd } from '@/lib/utils/format-helpers';
 import { createLendingOffer, createBorrowRequest } from '@/lib/contracts/p2p-marketplace';
+import { requestKusdFaucet } from '@/lib/contracts/kusd-token';
+import { updateSbtcPrice } from '@/lib/contracts/oracle';
 import toast from 'react-hot-toast';
 
 export default function CreatePage() {
+  // UI state management
   const [activeTab, setActiveTab] = useState<'offer' | 'request'>('offer');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFaucetLoading, setIsFaucetLoading] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
 
+  // Form data state - stores all user input values
   const [formData, setFormData] = useState({
     amount: '',
     apr: '',
@@ -45,7 +71,7 @@ export default function CreatePage() {
     }
 
     if (activeTab === 'offer') {
-      const availableKusd = microKusdToKusd(kusd);
+      const availableKusd = kusd; // Already in kUSD format from hook
       if (amount > availableKusd) {
         toast.error(`Insufficient kUSD balance. You have ${availableKusd.toLocaleString()} kUSD`);
         return false;
@@ -54,7 +80,7 @@ export default function CreatePage() {
 
     if (activeTab === 'request') {
       const collateralAmount = parseFloat(formData.collateralAmount);
-      const availableSbtc = satoshisToSbtc(sbtc);
+      const availableSbtc = sbtc; // Already in sBTC format from hook
       if (!collateralAmount || collateralAmount <= 0) {
         toast.error('Please enter collateral amount');
         return false;
@@ -91,12 +117,25 @@ export default function CreatePage() {
 
     try {
       const amount = parseFloat(formData.amount);
-      const apr = percentageToBps(parseFloat(formData.apr));
-      const duration = daysToBlocks(parseInt(formData.duration));
+      const apr = parseFloat(formData.apr);
+      const duration = parseInt(formData.duration);
       const minReputation = parseInt(formData.minReputation);
       const collateralRatio = parseInt(formData.collateralRatio);
 
-      await createLendingOffer({
+      console.log('Creating offer with params:', {
+        amount: amount,
+        apr: apr,
+        duration: duration,
+        minReputation,
+        collateralRatio,
+        'amount (micro-kUSD)': amount * 1_000_000,
+        'apr (bps)': apr * 100,
+        'duration (blocks)': duration * 144,
+        'collateral ratio (bps)': collateralRatio * 100,
+        'your kUSD balance': kusd,
+      });
+
+      const result = await createLendingOffer({
         amount,
         apr,
         duration,
@@ -104,7 +143,23 @@ export default function CreatePage() {
         collateralRatio,
       });
 
-      toast.success('Lending offer created successfully!', { id: toastId });
+      // Transaction was broadcast successfully
+      const txId = result.txId;
+      toast.success(
+        <div>
+          <div>Transaction submitted!</div>
+          <a
+            href={`https://explorer.hiro.so/txid/${txId}?chain=testnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs underline mt-1 block"
+          >
+            View on Explorer
+          </a>
+          <div className="text-xs mt-1">Your offer will appear after confirmation (~10 min)</div>
+        </div>,
+        { id: toastId, duration: 8000 }
+      );
 
       // Reset form
       setFormData({
@@ -137,14 +192,30 @@ export default function CreatePage() {
       const duration = daysToBlocks(parseInt(formData.duration));
       const collateralAmount = parseFloat(formData.collateralAmount);
 
-      await createBorrowRequest({
+      const result = await createBorrowRequest({
         amount,
         maxApr,
         duration,
         collateralAmount,
       });
 
-      toast.success('Borrow request created successfully!', { id: toastId });
+      // Transaction was broadcast successfully
+      const txId = result.txId;
+      toast.success(
+        <div>
+          <div>Transaction submitted!</div>
+          <a
+            href={`https://explorer.hiro.so/txid/${txId}?chain=testnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs underline mt-1 block"
+          >
+            View on Explorer
+          </a>
+          <div className="text-xs mt-1">Your request will appear after confirmation (~10 min)</div>
+        </div>,
+        { id: toastId, duration: 8000 }
+      );
 
       // Reset form
       setFormData({
@@ -170,6 +241,54 @@ export default function CreatePage() {
       await handleCreateOffer();
     } else {
       await handleCreateRequest();
+    }
+  };
+
+  const handleFaucetRequest = async () => {
+    setIsFaucetLoading(true);
+    const toastId = toast.loading('Requesting 1000 kUSD from faucet...');
+
+    try {
+      await requestKusdFaucet();
+      toast.success('Successfully received 1000 kUSD! Balance will update in a few seconds.', {
+        id: toastId,
+        duration: 6000,
+      });
+    } catch (error: any) {
+      console.error('Error requesting faucet:', error);
+      toast.error(error.message || 'Failed to request faucet. Please try again.', { id: toastId });
+    } finally {
+      setIsFaucetLoading(false);
+    }
+  };
+
+  const handleUpdateOraclePrice = async () => {
+    const toastId = toast.loading('Updating sBTC oracle price to $96,420...');
+
+    try {
+      const result = await updateSbtcPrice(96420);
+      toast.success(
+        <>
+          Oracle price updated! Transaction: {' '}
+          <a
+            href={`https://explorer.hiro.so/txid/${result.txId}?chain=testnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            {result.txId.slice(0, 8)}...
+          </a>
+          <br />
+          <span className="text-xs">Wait ~10 seconds, then try creating an offer.</span>
+        </>,
+        {
+          id: toastId,
+          duration: 10000,
+        }
+      );
+    } catch (error: any) {
+      console.error('Error updating oracle:', error);
+      toast.error(error.message || 'Failed to update oracle price', { id: toastId });
     }
   };
 
@@ -243,17 +362,67 @@ export default function CreatePage() {
           <p className="mt-2 text-xs text-[#848E9C]">Loading balances...</p>
         </div>
       ) : (
-        <div className="mb-6 grid grid-cols-2 gap-4">
-          <div className="p-4 bg-[#1E2329] border border-[#2B3139] rounded-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-[#848E9C]">Your kUSD Balance</span>
-              <span className="text-lg text-white font-semibold tabular-nums">${microKusdToKusd(kusd).toLocaleString()}</span>
+        <div className="mb-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 bg-[#1E2329] border border-[#2B3139] rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-[#848E9C]">Your kUSD Balance</span>
+                <span className="text-lg text-white font-semibold tabular-nums">${kusd.toLocaleString()}</span>
+              </div>
+              <button
+                onClick={handleFaucetRequest}
+                disabled={isFaucetLoading || isSubmitting}
+                className={`w-full mt-2 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-emerald-500 text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+                  isFaucetLoading || isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
+                }`}
+              >
+                {isFaucetLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-emerald-500"></div>
+                    <span>Requesting...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <span>Get Test Tokens (1000 kUSD)</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <div className="p-4 bg-[#1E2329] border border-[#2B3139] rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[#848E9C]">Your sBTC Balance</span>
+                <span className="text-lg text-white font-semibold tabular-nums">{sbtc.toFixed(4)} sBTC</span>
+              </div>
             </div>
           </div>
-          <div className="p-4 bg-[#1E2329] border border-[#2B3139] rounded-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-[#848E9C]">Your sBTC Balance</span>
-              <span className="text-lg text-white font-semibold tabular-nums">{satoshisToSbtc(sbtc).toFixed(4)} sBTC</span>
+
+          {/* Oracle Price Update Button */}
+          <div className="p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm text-yellow-500 font-medium mb-1">Oracle Price Update Required</p>
+                <p className="text-xs text-[#848E9C] mb-3">
+                  The sBTC price oracle needs to be updated before creating offers. Click below to update it to the current market price ($96,420).
+                </p>
+                <button
+                  onClick={handleUpdateOraclePrice}
+                  disabled={isSubmitting}
+                  className={`px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-500 text-xs font-semibold transition-all flex items-center gap-2 ${
+                    isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Update Oracle Price ($96,420)</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -323,10 +492,10 @@ export default function CreatePage() {
                 </div>
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-xs text-[#848E9C]">
-                    Available: {microKusdToKusd(kusd).toLocaleString()} kUSD
+                    Available: {kusd.toLocaleString()} kUSD
                   </span>
                   <button
-                    onClick={() => handleInputChange('amount', microKusdToKusd(kusd).toString())}
+                    onClick={() => handleInputChange('amount', kusd.toString())}
                     disabled={isSubmitting}
                     className={`text-xs text-emerald-500 hover:text-emerald-400 transition-colors ${
                       isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
@@ -361,10 +530,10 @@ export default function CreatePage() {
                   </div>
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-xs text-[#848E9C]">
-                      Available: {satoshisToSbtc(sbtc).toFixed(4)} sBTC
+                      Available: {sbtc.toFixed(4)} sBTC
                     </span>
                     <button
-                      onClick={() => handleInputChange('collateralAmount', satoshisToSbtc(sbtc).toString())}
+                      onClick={() => handleInputChange('collateralAmount', sbtc.toString())}
                       disabled={isSubmitting}
                       className={`text-xs text-emerald-500 hover:text-emerald-400 transition-colors ${
                         isSubmitting ? 'opacity-50 cursor-not-allowed' : ''

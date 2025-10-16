@@ -1,21 +1,41 @@
+/**
+ * Sidebar Navigation Component
+ *
+ * Responsive sidebar for the Kōen dashboard with collapsible functionality.
+ * Displays navigation menu items with active state highlighting.
+ *
+ * Features:
+ * - Desktop: Collapsible sidebar with toggle button
+ * - Mobile: Full-width overlay sidebar with backdrop
+ * - Active route highlighting
+ * - Badge support for notification counts
+ */
 'use client';
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
+/**
+ * Props for the Sidebar component
+ */
 interface SidebarProps {
-  collapsed: boolean;
-  onToggle: () => void;
+  collapsed: boolean;      // Whether sidebar is collapsed (desktop only)
+  onToggle: () => void;     // Callback to toggle collapsed state
+  onClose?: () => void;     // Callback to close sidebar (mobile only)
 }
 
+/**
+ * Navigation item structure
+ */
 interface NavItem {
-  label: string;
-  icon: React.ReactNode;
-  href: string;
-  badge?: number;
+  label: string;            // Display text for the nav item
+  icon: React.ReactNode;    // Icon component to display
+  href: string;             // Route path for navigation
+  badge?: number;           // Optional badge count (e.g., for notifications)
 }
 
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, onClose }: SidebarProps) {
+  // Get current pathname to highlight active navigation item
   const pathname = usePathname();
 
   const navItems: NavItem[] = [
@@ -86,6 +106,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 <li key={item.label}>
                   <Link
                     href={item.href}
+                    onClick={onClose}
                     className={`flex items-center gap-3 px-4 py-3 transition-colors relative group ${
                       active
                         ? 'bg-[#1E2329] text-emerald-500'

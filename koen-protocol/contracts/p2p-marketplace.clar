@@ -155,6 +155,197 @@
     uint ;; loan-id
 )
 
+;; ============================================
+;; ON-CHAIN REPUTATION: LOAN HISTORY TRACKING
+;; ============================================
+
+;; Track user's complete loan history for reputation calculation
+(define-map user-loan-history
+    principal
+    {
+        total-loans-taken: uint, ;; Total number of loans borrowed
+        total-loans-repaid: uint, ;; Successfully repaid loans
+        total-loans-liquidated: uint, ;; Liquidated loans (bad)
+        total-volume-borrowed: uint, ;; Total kUSD borrowed (micro-units)
+        total-volume-repaid: uint, ;; Total kUSD repaid (micro-units)
+        on-time-repayments: uint, ;; Repaid before/at end-block
+        late-repayments: uint, ;; Repaid after end-block
+        first-loan-block: uint, ;; Block height of first loan
+        last-activity-block: uint, ;; Most recent activity
+    }
+)
+
+;; ============================================
+;; ON-CHAIN REPUTATION: CALCULATION FUNCTIONS
+;; ============================================
+
+;; Helper: Min function (Clarity doesn't have built-in min)
+(define-private (min
+        (a uint)
+        (b uint)
+    )
+    (if (< a b)
+        a
+        b
+    )
+)
+
+;; Helper: Get user's loan history or return default empty history
+(define-private (get-user-history (user principal))
+    (default-to {
+        total-loans-taken: u0,
+        total-loans-repaid: u0,
+        total-loans-liquidated: u0,
+        total-volume-borrowed: u0,
+        total-volume-repaid: u0,
+        on-time-repayments: u0,
+        late-repayments: u0,
+        first-loan-block: u0,
+        last-activity-block: u0,
+    }
+        (map-get? user-loan-history user)
+    )
+)
+
+;; Calculate reputation score from loan history (0-1000+)
+(define-read-only (calculate-reputation-score (user principal))
+    (let (
+            (history (get-user-history user))
+            ;; BASE SCORE: Everyone starts at 300
+            (base-score u300)
+            ;; POSITIVE FACTORS
+            ;; +50 per successful repayment (max 500 points = 10 loans)
+            (repayment-bonus (min (* (get total-loans-repaid history) u50) u500))
+            ;; +1 point per 1000 kUSD repaid (max 200 points = 200,000 kUSD)
+            (volume-bonus (min (/ (get total-volume-repaid history) u1000000000) u200))
+            ;; +1 point per 100 blocks of account age (max 100 points)
+            (age-bonus (if (> (get first-loan-block history) u0)
+                (min
+                    (/ (- stacks-block-height (get first-loan-block history))
+                        u100
+                    )
+                    u100
+                )
+                u0
+            ))
+            ;; NEGATIVE FACTORS
+            ;; -300 per liquidation (severe penalty)
+            (liquidation-penalty (* (get total-loans-liquidated history) u300))
+            ;; -15 per late payment
+            (late-penalty (* (get late-repayments history) u15))
+            ;; Calculate total score (minimum 0)
+            (total-positive (+ base-score (+ repayment-bonus (+ volume-bonus age-bonus))))
+            (total-negative (+ liquidation-penalty late-penalty))
+            (final-score (if (> total-positive total-negative)
+                (- total-positive total-negative)
+                u0
+            ))
+        )
+        (ok final-score)
+    )
+)
+
+;; Update history when a loan is created
+(define-private (track-loan-creation
+        (borrower principal)
+        (amount uint)
+    )
+    (let (
+            (history (get-user-history borrower))
+            (is-first-loan (is-eq (get total-loans-taken history) u0))
+        )
+        (map-set user-loan-history borrower
+            (merge history {
+                total-loans-taken: (+ (get total-loans-taken history) u1),
+                total-volume-borrowed: (+ (get total-volume-borrowed history) amount),
+                first-loan-block: (if is-first-loan
+                    stacks-block-height
+                    (get first-loan-block history)
+                ),
+                last-activity-block: stacks-block-height,
+            })
+        )
+        (ok true)
+    )
+)
+
+;; Update history when a loan is repaid
+(define-private (track-loan-repayment
+        (borrower principal)
+        (amount uint)
+        (end-block uint)
+    )
+    (let (
+            (history (get-user-history borrower))
+            (is-on-time (<= stacks-block-height end-block))
+        )
+        (map-set user-loan-history borrower
+            (merge history {
+                total-loans-repaid: (+ (get total-loans-repaid history) u1),
+                total-volume-repaid: (+ (get total-volume-repaid history) amount),
+                on-time-repayments: (if is-on-time
+                    (+ (get on-time-repayments history) u1)
+                    (get on-time-repayments history)
+                ),
+                late-repayments: (if is-on-time
+                    (get late-repayments history)
+                    (+ (get late-repayments history) u1)
+                ),
+                last-activity-block: stacks-block-height,
+            })
+        )
+        (ok true)
+    )
+)
+
+;; Update history when a loan is liquidated
+(define-private (track-loan-liquidation (borrower principal))
+    (let ((history (get-user-history borrower)))
+        (map-set user-loan-history borrower
+            (merge history {
+                total-loans-liquidated: (+ (get total-loans-liquidated history) u1),
+                last-activity-block: stacks-block-height,
+            })
+        )
+        (ok true)
+    )
+)
+
+;; Public read-only: Get user's loan history
+(define-read-only (get-user-loan-history (user principal))
+    (ok (get-user-history user))
+)
+
+;; Helper: Calculate tier from score
+(define-private (calculate-tier-from-score (score uint))
+    (if (>= score u701)
+        "gold"
+        (if (>= score u301)
+            "silver"
+            "bronze"
+        )
+    )
+)
+
+;; AUTOMATIC REPUTATION MANAGEMENT
+;; Called after loan events to automatically update user's reputation SBT
+(define-private (auto-update-reputation (user principal))
+    (let (
+            (score-result (unwrap! (calculate-reputation-score user) (ok false)))
+            (tier (calculate-tier-from-score score-result))
+        )
+        ;; Call reputation-sbt to auto-manage (mint or update)
+        (match (contract-call? .reputation-sbt-v4 auto-manage-reputation user
+            score-result tier
+        )
+            success
+            (ok true)
+            error
+            (ok false) ;; Don't fail the loan operation if reputation update fails
+        )
+    )
+)
+
 ;; public functions
 
 ;; ============================================
@@ -265,7 +456,7 @@
         (asserts! (not (var-get is-paused)) ERR_PAUSED)
         (let (
                 (request-id (var-get next-request-id))
-                (reputation-response (contract-call? .reputation-sbt get-reputation tx-sender))
+                (reputation-response (contract-call? .reputation-sbt-v4 get-reputation tx-sender))
                 (reputation-score (match reputation-response
                     success (get score success)
                     error
@@ -295,8 +486,9 @@
             )
 
             ;; Lock borrower's sBTC collateral in contract
-            (try! (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer collateral-amount tx-sender
-                (as-contract tx-sender) none
+            (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token
+                transfer collateral-amount tx-sender (as-contract tx-sender)
+                none
             ))
 
             ;; Store request with price snapshot
@@ -317,6 +509,10 @@
             (var-set total-requests-created
                 (+ (var-get total-requests-created) u1)
             )
+
+            ;; AUTOMATIC REPUTATION: Auto-mint base reputation if this is user's first interaction
+            ;; This ensures all borrowers have a reputation SBT (starts at 300 = bronze)
+            (unwrap-panic (auto-update-reputation tx-sender))
 
             (print {
                 event: "request-created",
@@ -342,8 +538,8 @@
             )
 
             ;; Return sBTC collateral to borrower
-            (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
-                (get collateral-deposited request) tx-sender
+            (try! (as-contract (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token
+                transfer (get collateral-deposited request) tx-sender
                 (get borrower request) none
             )))
 
@@ -432,7 +628,7 @@
 
             ;; ===================================================================
             ;; END SLIPPAGE PROTECTION - Continue with normal matching logic
-            ;; ==================================================================="
+            ;; ===================================================================
 
             ;; Verify terms match
             (asserts! (is-eq (get amount offer) (get amount request))
@@ -519,6 +715,14 @@
                         (+ (var-get total-volume-lent) (get amount offer))
                     )
 
+                    ;; ON-CHAIN REPUTATION: Track loan creation for borrower
+                    (unwrap-panic (track-loan-creation (get borrower request)
+                        (get amount offer)
+                    ))
+
+                    ;; AUTOMATIC REPUTATION: Update borrower's reputation after loan creation
+                    (unwrap-panic (auto-update-reputation (get borrower request)))
+
                     (print {
                         event: "loan-created",
                         loan-id: loan-id,
@@ -568,8 +772,10 @@
                 ))
 
                 ;; Return sBTC collateral to borrower
-                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer (get collateral-amount loan)
-                    tx-sender (get borrower loan) none
+                (try! (as-contract (contract-call?
+                    'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token
+                    transfer (get collateral-amount loan) tx-sender
+                    (get borrower loan) none
                 )))
 
                 ;; Update loan status
@@ -585,6 +791,14 @@
                 (var-set total-interest-earned
                     (+ (var-get total-interest-earned) total-interest)
                 )
+
+                ;; ON-CHAIN REPUTATION: Track successful repayment
+                (unwrap-panic (track-loan-repayment tx-sender (get principal-amount loan)
+                    (get end-block loan)
+                ))
+
+                ;; AUTOMATIC REPUTATION: Update borrower's reputation SBT
+                (unwrap-panic (auto-update-reputation tx-sender))
 
                 (print {
                     event: "loan-repaid",
@@ -645,24 +859,33 @@
                     ;; Transfer collateral: logic depends on who liquidates
                     (if (is-eq caller (get lender loan))
                         ;; Lender liquidates - gets all collateral
-                        (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
-                            (get collateral-amount loan) tx-sender
+                        (try! (as-contract (contract-call?
+                            'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token
+                            transfer (get collateral-amount loan) tx-sender
                             (get lender loan) none
                         )))
                         ;; Third party liquidates - lender gets reduced amount, liquidator gets bonus
                         (begin
-                            (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer lender-amount
-                                tx-sender (get lender loan) none
+                            (try! (as-contract (contract-call?
+                                'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token
+                                transfer lender-amount tx-sender
+                                (get lender loan) none
                             )))
-                            (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
-                                liquidation-bonus-amount tx-sender caller
-                                none
+                            (try! (as-contract (contract-call?
+                                'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token
+                                transfer liquidation-bonus-amount tx-sender
+                                caller none
                             )))
                         )
                     )
 
+                    ;; ON-CHAIN REPUTATION: Track liquidation in history
+                    (unwrap-panic (track-loan-liquidation (get borrower loan)))
+
                     ;; Burn borrower's reputation SBT (punishment for default)
-                    (try! (contract-call? .reputation-sbt burn-sbt (get borrower loan)))
+                    (try! (contract-call? .reputation-sbt-v4 burn-sbt
+                        (get borrower loan)
+                    ))
 
                     (print {
                         event: "loan-liquidated",
@@ -907,7 +1130,7 @@
 
 ;; Get borrower's reputation score
 (define-private (get-borrower-reputation (borrower principal))
-    (match (contract-call? .reputation-sbt get-reputation borrower)
+    (match (contract-call? .reputation-sbt-v4 get-reputation borrower)
         success (get score success)
         error
         u0
@@ -916,7 +1139,7 @@
 
 ;; Get borrower's reputation tier
 (define-private (get-borrower-tier (borrower principal))
-    (match (contract-call? .reputation-sbt get-reputation borrower)
+    (match (contract-call? .reputation-sbt-v4 get-reputation borrower)
         success (get tier success)
         error
         "bronze"
@@ -926,7 +1149,7 @@
 ;; Get borrower's reputation multiplier (in basis points)
 ;; Returns: u0 (Bronze/0%), u1500 (Silver/15%), u3000 (Gold/30%)
 (define-private (get-borrower-multiplier (borrower principal))
-    (match (contract-call? .reputation-sbt get-multiplier borrower)
+    (match (contract-call? .reputation-sbt-v4 get-multiplier borrower)
         multiplier
         multiplier
         error

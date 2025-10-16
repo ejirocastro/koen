@@ -36,7 +36,9 @@
     (memo (optional (buff 34)))
   )
   (begin
-    (asserts! (is-eq tx-sender sender) ERR_UNAUTHORIZED)
+    ;; Allow either direct transfer (tx-sender is sender) OR contract-initiated transfer (contract-caller is sender)
+    ;; This enables contracts like p2p-marketplace to transfer on behalf of users
+    (asserts! (or (is-eq tx-sender sender) (is-eq contract-caller sender)) ERR_UNAUTHORIZED)
     (asserts! (> amount u0) ERR_INVALID_AMOUNT)
     (try! (ft-transfer? kusd amount sender recipient))
     (match memo

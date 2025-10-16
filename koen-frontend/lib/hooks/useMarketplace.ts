@@ -6,6 +6,8 @@ import {
   getLendingOffer,
   getBorrowRequest,
   getMarketplaceStats,
+  getNextOfferIds,
+  getNextRequestIds,
   type LendingOffer,
   type BorrowRequest,
   type MarketplaceStats,
@@ -13,79 +15,135 @@ import {
 
 /**
  * Hook to fetch all active lending offers
- * Note: This fetches a range of offer IDs. In production, you'd want pagination.
+ * Uses smart querying: fetches the next-offer-id from contract, then queries backwards
  */
-export function useActiveOffers(startId: number = 1, count: number = 20) {
+export function useActiveOffers(maxCount: number = 50) {
   const network = getNetwork();
 
   return useQuery({
-    queryKey: ['active-offers', startId, count],
+    queryKey: ['active-offers', maxCount],
     queryFn: async (): Promise<LendingOffer[]> => {
       const offers: LendingOffer[] = [];
 
       try {
-        // Fetch offers in parallel
-        const promises = Array.from({ length: count }, (_, i) => {
-          const offerId = startId + i;
-          return getLendingOffer(offerId, network);
-        });
+        // First, get the next offer ID to know the range
+        const nextIdData = await getNextOfferIds(network);
+        if (!nextIdData || nextIdData.nextId <= 1) {
+          // No offers created yet
+          return [];
+        }
 
-        const results = await Promise.all(promises);
+        const nextOfferId = nextIdData.nextId;
+        const startId = Math.max(1, nextOfferId - maxCount);
+        const endId = nextOfferId - 1; // next-offer-id is the NEXT one to be created
 
-        // Filter out null results and inactive offers
-        for (const offer of results) {
-          if (offer && offer.status === 'open') {
-            offers.push(offer);
+        console.log(`[useActiveOffers] Fetching offers from ${startId} to ${endId}`);
+
+        // Fetch offers in smaller batches to avoid rate limiting
+        const BATCH_SIZE = 5;
+        const totalOffers = endId - startId + 1;
+        const batches = Math.ceil(totalOffers / BATCH_SIZE);
+
+        for (let batch = 0; batch < batches; batch++) {
+          const batchStart = startId + (batch * BATCH_SIZE);
+          const batchCount = Math.min(BATCH_SIZE, totalOffers - (batch * BATCH_SIZE));
+
+          const promises = Array.from({ length: batchCount }, (_, i) => {
+            const offerId = batchStart + i;
+            return getLendingOffer(offerId, network);
+          });
+
+          const results = await Promise.all(promises);
+
+          // Filter out null results and inactive offers
+          for (const offer of results) {
+            if (offer && offer.status === 'open') {
+              offers.push(offer);
+            }
+          }
+
+          // Small delay between batches to be nice to the API
+          if (batch < batches - 1) {
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
         }
       } catch (error) {
-        // Silently handle errors - empty marketplace is normal
-        console.log('No offers found or marketplace is empty');
+        console.error('Error fetching offers:', error);
       }
 
       return offers;
     },
-    // Refetch every 30 seconds
-    refetchInterval: 30000,
+    // Refetch every 2 minutes (reduced frequency to respect rate limits)
+    refetchInterval: 120000,
     retry: 1, // Only retry once
+    staleTime: 60000, // Consider data fresh for 1 minute
   });
 }
 
 /**
  * Hook to fetch all active borrow requests
+ * Uses smart querying: fetches the next-request-id from contract, then queries backwards
  */
-export function useActiveRequests(startId: number = 1, count: number = 20) {
+export function useActiveRequests(maxCount: number = 50) {
   const network = getNetwork();
 
   return useQuery({
-    queryKey: ['active-requests', startId, count],
+    queryKey: ['active-requests', maxCount],
     queryFn: async (): Promise<BorrowRequest[]> => {
       const requests: BorrowRequest[] = [];
 
       try {
-        // Fetch requests in parallel
-        const promises = Array.from({ length: count }, (_, i) => {
-          const requestId = startId + i;
-          return getBorrowRequest(requestId, network);
-        });
+        // First, get the next request ID to know the range
+        const nextIdData = await getNextRequestIds(network);
+        if (!nextIdData || nextIdData.nextId <= 1) {
+          // No requests created yet
+          return [];
+        }
 
-        const results = await Promise.all(promises);
+        const nextRequestId = nextIdData.nextId;
+        const startId = Math.max(1, nextRequestId - maxCount);
+        const endId = nextRequestId - 1;
 
-        // Filter out null results and inactive requests
-        for (const request of results) {
-          if (request && request.status === 'open') {
-            requests.push(request);
+        console.log(`[useActiveRequests] Fetching requests from ${startId} to ${endId}`);
+
+        // Fetch requests in smaller batches to avoid rate limiting
+        const BATCH_SIZE = 5;
+        const totalRequests = endId - startId + 1;
+        const batches = Math.ceil(totalRequests / BATCH_SIZE);
+
+        for (let batch = 0; batch < batches; batch++) {
+          const batchStart = startId + (batch * BATCH_SIZE);
+          const batchCount = Math.min(BATCH_SIZE, totalRequests - (batch * BATCH_SIZE));
+
+          const promises = Array.from({ length: batchCount }, (_, i) => {
+            const requestId = batchStart + i;
+            return getBorrowRequest(requestId, network);
+          });
+
+          const results = await Promise.all(promises);
+
+          // Filter out null results and inactive requests
+          for (const request of results) {
+            if (request && request.status === 'open') {
+              requests.push(request);
+            }
+          }
+
+          // Small delay between batches to be nice to the API
+          if (batch < batches - 1) {
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
         }
       } catch (error) {
-        // Silently handle errors - empty marketplace is normal
-        console.log('No requests found or marketplace is empty');
+        console.error('Error fetching requests:', error);
       }
 
       return requests;
     },
-    refetchInterval: 30000,
+    // Refetch every 2 minutes (reduced frequency to respect rate limits)
+    refetchInterval: 120000,
     retry: 1, // Only retry once
+    staleTime: 60000, // Consider data fresh for 1 minute
   });
 }
 
@@ -144,8 +202,9 @@ export function useMarketplaceStats() {
         };
       }
     },
-    refetchInterval: 60000, // Refetch every minute
+    refetchInterval: 120000, // Refetch every 2 minutes
     retry: 2, // Retry twice before giving up
-    retryDelay: 1000, // Wait 1s between retries
+    retryDelay: 2000, // Wait 2s between retries
+    staleTime: 60000, // Consider data fresh for 1 minute
   });
 }

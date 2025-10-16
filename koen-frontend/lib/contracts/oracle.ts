@@ -7,6 +7,7 @@ import {
 import { openContractCall } from '@stacks/connect';
 import { StacksNetwork } from '@stacks/network';
 import { CONTRACTS, MARKETPLACE_CONSTANTS } from '../constants';
+import { getNetwork } from '../network';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -359,29 +360,35 @@ export async function getLastUpdateBlock(
  * Update sBTC price in oracle
  * Note: This is typically restricted to oracle admin/owner
  */
-export async function updateSbtcPrice(newPrice: number): Promise<any> {
+export async function updateSbtcPrice(newPrice: number): Promise<{ txId: string }> {
   const [contractAddress, contractName] = CONTRACTS.ORACLE.split('.');
 
-  // Convert price to 8 decimals format
-  // e.g., 40000.00 → 4000000000000
-  const priceWith8Decimals = Math.floor(newPrice * 100_000_000);
+  // Get network (imported at top to avoid dynamic import issues)
+  const network = getNetwork();
 
-  const options = {
-    contractAddress,
-    contractName,
-    functionName: 'set-sbtc-price',
-    functionArgs: [uintCV(priceWith8Decimals)],
-    postConditionMode: PostConditionMode.Deny,
-    onFinish: (data: any) => {
-      console.log('Update sBTC price transaction submitted:', data.txId);
-      return data;
-    },
-    onCancel: () => {
-      throw new Error('Transaction cancelled by user');
-    },
-  };
+  // Convert price to 6 decimals format (micro-USD)
+  // e.g., 96420.00 → 96420000000
+  const priceWithDecimals = Math.floor(newPrice * 1_000_000);
 
-  return await openContractCall(options);
+  return new Promise((resolve, reject) => {
+    const options = {
+      network, // CRITICAL: Explicitly set network to testnet
+      contractAddress,
+      contractName,
+      functionName: 'set-sbtc-price',
+      functionArgs: [uintCV(priceWithDecimals)],
+      postConditionMode: PostConditionMode.Deny,
+      onFinish: (data: any) => {
+        console.log('Update sBTC price transaction submitted:', data.txId);
+        resolve({ txId: data.txId });
+      },
+      onCancel: () => {
+        reject(new Error('Transaction cancelled by user'));
+      },
+    };
+
+    openContractCall(options);
+  });
 }
 
 // ============================================

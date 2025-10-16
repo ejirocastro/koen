@@ -1,0 +1,25 @@
+---
+id: 1
+name: "Testnet V2 Deployment - Automatic Reputation System"
+network: testnet
+stacks-node: "https://api.testnet.hiro.so"
+bitcoin-node: "http://blockstack:blockstacksystem@bitcoind.testnet.stacks.co:18332"
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - contract-publish:
+            contract-name: reputation-sbt-v4
+            expected-sender: ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3
+            cost: 106240
+            path: contracts/reputation-sbt.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: p2p-marketplace-v4
+            expected-sender: ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3
+            cost: 547940
+            path: contracts/p2p-marketplace.clar
+            anchor-block-only: true
+            clarity-version: 3
+      epoch: "3.2"

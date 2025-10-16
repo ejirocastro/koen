@@ -22,6 +22,7 @@ describe("Hybrid Slippage Protection - Layer 1: Authorization", () => {
     for (let i = 0; i < 10; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token", "mint", [Cl.uint(100000000), Cl.principal(borrower)], "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4");
 
     // Set initial price
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer);
@@ -147,6 +148,7 @@ describe("Hybrid Slippage Protection - Layer 2: Age Limits", () => {
     for (let i = 0; i < 10; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token", "mint", [Cl.uint(100000000), Cl.principal(borrower)], "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4");
 
     // Set initial price
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer);
@@ -290,6 +292,7 @@ describe("Hybrid Slippage Protection - Layer 3: Price Deviation", () => {
     for (let i = 0; i < 10; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token", "mint", [Cl.uint(100000000), Cl.principal(borrower)], "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4");
 
     // Set initial price
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer); // $40k
@@ -588,6 +591,7 @@ describe("Hybrid Slippage Protection - Defense in Depth", () => {
     for (let i = 0; i < 10; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token", "mint", [Cl.uint(100000000), Cl.principal(borrower)], "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4");
 
     // Set initial price
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer);
@@ -658,6 +662,7 @@ describe("Hybrid Slippage Protection - Defense in Depth", () => {
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(48000000000)], deployer); // +20%
 
     // Step 4: Give attacker sBTC for collateral
+    simnet.callPublicFn("SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token", "mint", [Cl.uint(100000000), Cl.principal(randomUser)], "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4");
 
     // Step 5: Attacker creates request and tries to match
     simnet.callPublicFn(

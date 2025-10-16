@@ -1,14 +1,15 @@
 import {
-  fetchCallReadOnlyFunction,
   cvToJSON,
   uintCV,
   principalCV,
   PostConditionMode,
+  fetchCallReadOnlyFunction,
 } from '@stacks/transactions';
 import { openContractCall } from '@stacks/connect';
 import { StacksNetwork } from '@stacks/network';
 import { CONTRACTS, REPUTATION_TIERS, ReputationTier } from '../constants';
 import { getReputationTierFromScore } from '../constants';
+import { robustFetchReadOnly, safeReadOnlyCall } from '../network/api-client';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -44,16 +45,13 @@ export async function getReputation(
   try {
     const [contractAddress, contractName] = CONTRACTS.REPUTATION_SBT.split('.');
 
-    const result = await fetchCallReadOnlyFunction({
+    const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-reputation',
-      functionArgs: [principalCV(address)],
-      network,
-      senderAddress: contractAddress,
-    });
-
-    const data = cvToJSON(result);
+      'get-reputation',
+      [principalCV(address)],
+      network
+    );
 
     // Handle response wrapper - could be data.value.value or data.value
     let reputation = data.value;

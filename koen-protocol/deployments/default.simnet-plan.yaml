@@ -78,6 +78,19 @@ plan:
     - id: 1
       transactions:
         - emulated-contract-publish:
+            contract-name: sbtc-registry
+            emulated-sender: ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT
+            path: "./.cache/requirements/ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-registry.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: sbtc-token
+            emulated-sender: ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT
+            path: "./.cache/requirements/ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token.clar"
+            clarity-version: 3
+      epoch: "3.1"
+    - id: 2
+      transactions:
+        - emulated-contract-publish:
             contract-name: kusd-token
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: contracts/kusd-token.clar
@@ -88,7 +101,7 @@ plan:
             path: contracts/oracle.clar
             clarity-version: 3
         - emulated-contract-publish:
-            contract-name: reputation-sbt
+            contract-name: reputation-sbt-v4
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: contracts/reputation-sbt.clar
             clarity-version: 3
@@ -96,5 +109,25 @@ plan:
             contract-name: p2p-marketplace
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: contracts/p2p-marketplace.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: p2p-marketplace-v3
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/p2p-marketplace.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: p2p-marketplace-v4
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/p2p-marketplace.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: reputation-sbt
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/reputation-sbt.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: reputation-sbt-v3
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/reputation-sbt.clar
             clarity-version: 3
       epoch: "3.2"

@@ -151,6 +151,7 @@ describe("P2P Marketplace - Lending Offers", () => {
 
   it("should prevent canceling matched offer", () => {
     // Setup borrower
+    simnet.callPublicFn("sbtc-token", "faucet", [], borrower);
 
     // Create and match offer
     simnet.callPublicFn(
@@ -188,6 +189,7 @@ describe("P2P Marketplace - Lending Offers", () => {
 
 describe("P2P Marketplace - Borrow Requests", () => {
   beforeEach(() => {
+    simnet.callPublicFn("sbtc-token", "faucet", [], borrower);
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer);
   });
 
@@ -210,14 +212,13 @@ describe("P2P Marketplace - Borrow Requests", () => {
       borrower
     );
 
-    const { result } = simnet.callReadOnlyFn(
-      "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token",
+    const { result } = simnet.callPublicFn(
+      "sbtc-token",
       "get-balance",
       [Cl.principal(borrower)],
       deployer
     );
-    // Clarinet auto-funds with 1B sats, after locking 50M collateral = 950M remaining
-    expect(result).toBeOk(Cl.uint(950000000));
+    expect(result).toBeOk(Cl.uint(50000000));
   });
 
   it("should prevent canceling non-existent request", () => {
@@ -296,6 +297,7 @@ describe("P2P Marketplace - Statistics", () => {
     for (let i = 0; i < 10; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("sbtc-token", "faucet", [], borrower);
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer);
   });
 
@@ -358,6 +360,7 @@ describe("P2P Marketplace - Reputation and Collateral Requirements", () => {
     for (let i = 0; i < 10; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("sbtc-token", "faucet", [], borrower);
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer);
   });
 
@@ -412,6 +415,7 @@ describe("P2P Marketplace - Loan Matching", () => {
     for (let i = 0; i < 10; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("sbtc-token", "faucet", [], borrower);
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer);
   });
 
@@ -609,6 +613,7 @@ describe("P2P Marketplace - Loan Repayment", () => {
     }
     // Give borrower extra kUSD to cover interest payments (1000 kUSD)
     simnet.callPublicFn("kusd-token", "faucet", [], borrower);
+    simnet.callPublicFn("sbtc-token", "faucet", [], borrower);
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer);
 
     // Create and match loan
@@ -668,15 +673,15 @@ describe("P2P Marketplace - Loan Repayment", () => {
     );
 
     // Check borrower got sBTC back
-    const { result } = simnet.callReadOnlyFn(
-      "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token",
+    const { result } = simnet.callPublicFn(
+      "sbtc-token",
       "get-balance",
       [Cl.principal(borrower)],
       deployer
     );
 
-    // Borrower had 1B sats from Clarinet auto-fund, locked 15M as collateral, got it back after repayment
-    expect(result).toBeOk(Cl.uint(1000000000)); // Full auto-funded amount returned
+    // Borrower had 100M sats from faucet, locked 15M as collateral, got it back
+    expect(result).toBeOk(Cl.uint(100000000)); // Full faucet amount returned
   });
 
   it("should prevent double repayment", () => {
@@ -769,6 +774,7 @@ describe("P2P Marketplace - Liquidation", () => {
     for (let i = 0; i < 10; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("sbtc-token", "faucet", [], borrower);
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer);
 
     // Set marketplace contract in reputation-sbt so it can burn tokens
@@ -839,15 +845,14 @@ describe("P2P Marketplace - Liquidation", () => {
     );
 
     // Check lender received sBTC collateral
-    const { result } = simnet.callReadOnlyFn(
-      "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token",
+    const { result } = simnet.callPublicFn(
+      "sbtc-token",
       "get-balance",
       [Cl.principal(lender)],
       deployer
     );
 
-    // Lender had 1B from auto-fund + 15M collateral from liquidation = 1.015B
-    expect(result).toBeOk(Cl.uint(1015000000));
+    expect(result).toBeOk(Cl.uint(15000000)); // Collateral amount
   });
 
   it("should prevent liquidation before loan expires", () => {
@@ -893,12 +898,12 @@ describe("P2P Marketplace - Liquidation", () => {
       deployer
     );
 
-    // Automatic reputation system updated it to bronze (300) after create-borrow-request
+    // Should have reputation from beforeEach setup (has minted SBT with score 500, tier silver)
     // Just verify it's an ok response (not an error)
     const initialResultStr = JSON.stringify(initialReputation.result);
     expect(initialResultStr).toContain('"type":"ok"');
-    expect(initialResultStr).toContain('300'); // score - auto-updated to base score
-    expect(initialResultStr).toContain('bronze'); // tier - auto-updated based on loan history
+    expect(initialResultStr).toContain('500'); // score
+    expect(initialResultStr).toContain('silver'); // tier
 
     // Mine past due and liquidate
     simnet.mineEmptyBlocks(14500);
@@ -935,6 +940,7 @@ describe("P2P Marketplace - Interest Calculation", () => {
     for (let i = 0; i < 10; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("sbtc-token", "faucet", [], borrower);
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer);
 
     const offerIdResponse = simnet.callPublicFn(
@@ -1013,6 +1019,7 @@ describe("P2P Marketplace - Loan Health Monitoring", () => {
     for (let i = 0; i < 10; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("sbtc-token", "faucet", [], borrower);
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer);
 
     const offerIdResponse = simnet.callPublicFn(
@@ -1076,6 +1083,7 @@ describe("P2P Marketplace - Getter Functions", () => {
     for (let i = 0; i < 10; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("sbtc-token", "faucet", [], borrower);
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer);
 
     // Create offer and request
@@ -1152,6 +1160,7 @@ describe("P2P Marketplace - Collateral Health Monitoring", () => {
     for (let i = 0; i < 10; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("sbtc-token", "faucet", [], borrower);
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer); // $40k BTC
 
     // Set marketplace for reputation
@@ -1517,6 +1526,7 @@ describe("P2P Marketplace - Missing Error Code Coverage", () => {
     for (let i = 0; i < 10; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("sbtc-token", "faucet", [], borrower);
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer); // $40k
 
     // Create and match loan
@@ -1582,6 +1592,7 @@ describe("P2P Marketplace - Reputation Bonus System", () => {
     for (let i = 0; i < 50; i++) {
       simnet.callPublicFn("kusd-token", "faucet", [], lender);
     }
+    simnet.callPublicFn("sbtc-token", "faucet", [], borrower);
     simnet.callPublicFn("oracle", "set-sbtc-price", [Cl.uint(40000000000)], deployer); // $40k BTC
   });
 
@@ -1799,6 +1810,7 @@ describe("P2P Marketplace - Reputation Bonus System", () => {
     const goldUser = simnet.getAccounts().get("wallet_3")!;
 
     // Test Bronze (0% bonus)
+    simnet.callPublicFn("sbtc-token", "faucet", [], bronzeUser);
     simnet.callPublicFn("reputation-sbt", "mint-sbt", [Cl.principal(bronzeUser), Cl.uint(300), Cl.stringAscii("bronze")], deployer);
     simnet.callPublicFn(
       "p2p-marketplace",
@@ -1818,6 +1830,7 @@ describe("P2P Marketplace - Reputation Bonus System", () => {
     expect((bronzeRatio.result as any).value.value).toBe(12000n);
 
     // Test Silver (10% bonus)
+    simnet.callPublicFn("sbtc-token", "faucet", [], silverUser);
     simnet.callPublicFn("reputation-sbt", "mint-sbt", [Cl.principal(silverUser), Cl.uint(500), Cl.stringAscii("silver")], deployer);
     simnet.callPublicFn(
       "p2p-marketplace",
@@ -1837,6 +1850,7 @@ describe("P2P Marketplace - Reputation Bonus System", () => {
     expect((silverRatio.result as any).value.value).toBe(13200n);
 
     // Test Gold (20% bonus)
+    simnet.callPublicFn("sbtc-token", "faucet", [], goldUser);
     simnet.callPublicFn("reputation-sbt", "mint-sbt", [Cl.principal(goldUser), Cl.uint(800), Cl.stringAscii("gold")], deployer);
     simnet.callPublicFn(
       "p2p-marketplace",
@@ -1859,6 +1873,7 @@ describe("P2P Marketplace - Reputation Bonus System", () => {
   it("should prevent borrowing more than collateral + reputation allows (ERR_BORROW_AMOUNT_EXCEEDS_LIMIT u521)", () => {
     // Setup: Bronze user with 10M sats ($4000 at $40k BTC)
     const bronzeUser = simnet.getAccounts().get("wallet_4")!;
+    simnet.callPublicFn("sbtc-token", "faucet", [], bronzeUser);
     simnet.callPublicFn("reputation-sbt", "mint-sbt", [Cl.principal(bronzeUser), Cl.uint(300), Cl.stringAscii("bronze")], deployer);
 
     // Bronze with 0% bonus:
@@ -1886,6 +1901,8 @@ describe("P2P Marketplace - Reputation Bonus System", () => {
     const goldUser = simnet.getAccounts().get("wallet_6")!;
     const collateral = 10000000; // 10M sats = $4000 at $40k
 
+    simnet.callPublicFn("sbtc-token", "faucet", [], bronzeUser);
+    simnet.callPublicFn("sbtc-token", "faucet", [], goldUser);
     simnet.callPublicFn("reputation-sbt", "mint-sbt", [Cl.principal(bronzeUser), Cl.uint(300), Cl.stringAscii("bronze")], deployer);
     simnet.callPublicFn("reputation-sbt", "mint-sbt", [Cl.principal(goldUser), Cl.uint(800), Cl.stringAscii("gold")], deployer);
 
@@ -1914,6 +1931,7 @@ describe("P2P Marketplace - Reputation Bonus System", () => {
   it("should provide borrowing power preview for users", () => {
     // Bronze user with 15M sats ($6000 at $40k BTC)
     const bronzeUser = simnet.getAccounts().get("wallet_7")!;
+    simnet.callPublicFn("sbtc-token", "faucet", [], bronzeUser);
     simnet.callPublicFn("reputation-sbt", "mint-sbt", [Cl.principal(bronzeUser), Cl.uint(300), Cl.stringAscii("bronze")], deployer);
 
     // Call the borrowing power preview function

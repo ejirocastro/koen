@@ -1,8 +1,28 @@
+/**
+ * TopBar Component
+ *
+ * Fixed header bar displayed at the top of all dashboard pages.
+ * Shows market information, wallet status, and navigation controls.
+ *
+ * Features:
+ * - Real-time sBTC price ticker with 24h change
+ * - Network indicator (testnet/mainnet)
+ * - Wallet connection status
+ * - Mobile hamburger menu
+ * - Notification and settings buttons
+ */
 'use client';
 
 import { useState } from 'react';
 
-export default function TopBar() {
+/**
+ * Props for the TopBar component
+ */
+interface TopBarProps {
+  onMenuClick?: () => void;  // Callback for mobile menu toggle
+}
+
+export default function TopBar({ onMenuClick }: TopBarProps) {
   const [network, setNetwork] = useState<'testnet' | 'mainnet'>('testnet');
   const [btcPrice, setBtcPrice] = useState<number>(96420);
   const [priceChange, setPriceChange] = useState<number>(2.34);
@@ -11,7 +31,16 @@ export default function TopBar() {
     <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-[#0B0E11] border-b border-[#1E2329]">
       <div className="h-full px-4 flex items-center justify-between">
         {/* Left - Logo & Market Info */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Mobile Menu Button */}
+          <button
+            onClick={onMenuClick}
+            className="lg:hidden p-2 hover:bg-[#1E2329] rounded-lg transition-colors"
+          >
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
           {/* Logo */}
           <div className="flex items-center gap-2 pr-4 border-r border-[#1E2329]">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-black font-bold text-sm">

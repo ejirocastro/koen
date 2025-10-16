@@ -8,12 +8,10 @@ import {
   WalletRegistrationData
 } from './wallet';
 import {
-  connect,
-  isConnected,
-  disconnect,
+  authenticate,
   request,
-  getLocalStorage
 } from '@stacks/connect';
+import { userSession } from './lib/auth';
 import {
   verifyMessageSignature
 } from '@stacks/encryption';
@@ -99,46 +97,55 @@ class WalletService {
    * Connect to a Stacks wallet
    * This method explicitly connects the wallet and marks it as connected through our app
    */
-  async connectWallet(appDetails?: {
-    name: string;
-    icon: string;
-  }): Promise<WalletInfo> {
-    try {
-      console.log("Starting explicit wallet connection...");
-      const response = await connect();
-      console.log("Wallet connection response:", response);
+  async connectWallet(): Promise<WalletInfo> {
+    return new Promise((resolve, reject) => {
+      try {
+        console.log("Starting explicit wallet connection...");
 
-      const userData = getLocalStorage();
-      console.log("User Data:", userData);
-      
-      // Helper to safely access wallet response
-      const getWalletAddresses = (response: any) => {
-        return {
-          stx: response?.addresses?.stx?.[0]?.address,
-          btc: response?.addresses?.btc?.[0]?.address
-        };
-      };
+        authenticate({
+          appDetails: {
+            name: 'Kōen Protocol',
+            icon: typeof window !== 'undefined' ? window.location.origin + '/favicon.ico' : '',
+          },
+          redirectTo: '/',
+          onFinish: (payload: any) => {
+            console.log("Wallet connection finished", payload);
 
-      const { stx, btc } = getWalletAddresses(userData);
-      console.log("Extracted addresses:", { stx, btc });
-      
-      if (stx && btc) {
-        // Mark as explicitly connected ONLY after successful connection
-        this.markAsExplicitlyConnected();
-        
-        return {
-          address: stx,
-          publicKey: (userData as any)?.profile?.publicKey || (userData as any)?.publicKey || '',
-          profile: (userData as any)?.profile || userData,
-          isConnected: true,
-        };
-      } else {
-        throw new Error("Failed to retrieve wallet addresses");
+            // Get the user data from the session
+            const userData = userSession.loadUserData();
+            console.log("User Data:", userData);
+
+            // Get STX address based on network
+            const stxAddress = userData?.profile?.stxAddress?.testnet ||
+                              userData?.profile?.stxAddress?.mainnet;
+
+            console.log("Extracted STX address:", stxAddress);
+
+            if (stxAddress) {
+              // Mark as explicitly connected ONLY after successful connection
+              this.markAsExplicitlyConnected();
+
+              resolve({
+                address: stxAddress,
+                publicKey: userData?.profile?.publicKey || '',
+                profile: userData?.profile || userData,
+                isConnected: true,
+              });
+            } else {
+              reject(new Error("Failed to retrieve wallet address"));
+            }
+          },
+          onCancel: () => {
+            console.log("Wallet connection cancelled");
+            reject(new Error("User cancelled wallet connection"));
+          },
+          userSession,
+        });
+      } catch (error) {
+        console.error('Error connecting wallet:', error);
+        reject(new Error('Failed to connect wallet'));
       }
-    } catch (error) {
-      console.error('Error connecting wallet:', error);
-      throw new Error('Failed to connect wallet');
-    }
+    });
   }
 
   /**
@@ -198,28 +205,23 @@ class WalletService {
     try {
       // First check if wallet was explicitly connected through our app
       if (!this.explicitlyConnected) {
-        console.log("Wallet not explicitly connected through StacksPay app");
+        console.log("Wallet not explicitly connected through Kōen app");
         return null;
       }
 
-      if (!isConnected()) {
-        // Clear our explicit connection flag if Stacks connect says not connected
+      if (!userSession.isUserSignedIn()) {
+        // Clear our explicit connection flag if user is not signed in
         this.clearExplicitConnection();
         return null;
       }
 
-      const userData = getLocalStorage();
-      
-      // Helper to safely access wallet response
-      const getWalletAddresses = (response: any) => {
-        return {
-          stx: response?.addresses?.stx?.[0]?.address,
-          btc: response?.addresses?.btc?.[0]?.address
-        };
-      };
+      const userData = userSession.loadUserData();
 
-      const { stx } = getWalletAddresses(userData);
-      return stx || null;
+      // Get STX address based on network
+      const stxAddress = userData?.profile?.stxAddress?.testnet ||
+                        userData?.profile?.stxAddress?.mainnet;
+
+      return stxAddress || null;
     } catch (error) {
       console.error('Error getting wallet address:', error);
       return null;
@@ -231,18 +233,18 @@ class WalletService {
    */
   async disconnectWallet(): Promise<void> {
     try {
-      await disconnect();
-      console.log('✅ StacksPay: Wallet disconnected');
+      userSession.signUserOut();
+      this.clearExplicitConnection();
+      console.log('✅ Kōen: Wallet disconnected');
     } catch (error) {
       console.error('❌ Wallet disconnection failed:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to disconnect wallet');
     }
   }
 
-
   async isWalletConnected(): Promise<boolean> {
     try {
-      return await isConnected();
+      return userSession.isUserSignedIn();
     } catch (error) {
       console.error('Error checking wallet connection:', error);
       return false;
@@ -259,45 +261,38 @@ class WalletService {
     try {
       // First check if wallet was explicitly connected through our app
       if (!this.explicitlyConnected) {
-        console.log("Wallet not explicitly connected through StacksPay app");
+        console.log("Wallet not explicitly connected through Kōen app");
         return null;
       }
 
-      const connected = await isConnected();
-      if (!connected) {
-        console.log("Stacks wallet not connected");
-        // Clear our explicit connection flag if Stacks connect says not connected
+      if (!userSession.isUserSignedIn()) {
+        console.log("User not signed in");
+        // Clear our explicit connection flag if user is not signed in
         this.clearExplicitConnection();
         return null;
       }
 
-      const walletData = getLocalStorage();
-      if (!walletData) {
+      const userData = userSession.loadUserData();
+      if (!userData) {
         console.log("No wallet data available");
         return null;
       }
 
-      console.log("Explicitly connected walletData", walletData)
+      console.log("Explicitly connected walletData", userData);
 
-      // Helper to safely access wallet response
-      const getWalletAddresses = (response: any) => {
-        return {
-          stx: response?.addresses?.stx?.[0]?.address,
-          btc: response?.addresses?.btc?.[0]?.address
-        };
-      };
+      // Get STX address based on network
+      const stxAddress = userData?.profile?.stxAddress?.testnet ||
+                        userData?.profile?.stxAddress?.mainnet;
 
-      const { stx, btc } = getWalletAddresses(walletData);
-
-      if (!stx) {
+      if (!stxAddress) {
         console.log("No Stacks address found in wallet data");
         return null;
       }
 
       return {
-        address: stx,
-        publicKey: (walletData as any)?.profile?.publicKey || (walletData as any)?.publicKey || '',
-        profile: (walletData as any)?.profile || walletData,
+        address: stxAddress,
+        publicKey: userData?.profile?.publicKey || '',
+        profile: userData?.profile || userData,
         isConnected: true,
         walletType: this.detectWalletType(),
         network: this.network === STACKS_MAINNET ? 'mainnet' : 'testnet',
@@ -313,38 +308,22 @@ class WalletService {
    */
   async getCurrentBitcoinAddress(): Promise<string | null> {
     try {
-      const connected = await isConnected();
-      if (!connected) return null;
+      if (!userSession.isUserSignedIn()) return null;
 
-      const walletData = getLocalStorage();
-      if (!walletData) return null;
+      const userData = userSession.loadUserData();
+      if (!userData) return null;
 
-      console.log("Bitcoin address lookup - walletData structure:", JSON.stringify(walletData, null, 2));
+      console.log("Bitcoin address lookup - userData structure:", JSON.stringify(userData, null, 2));
 
-      // Helper to safely access wallet response
-      const getWalletAddresses = (response: any) => {
-        console.log("Getting wallet addresses from:", response);
-        
-        // Try different possible structures
-        const addresses = {
-          stx: response?.addresses?.stx?.[0]?.address || response?.addresses?.stx?.address,
-          btc: response?.addresses?.btc?.[0]?.address || response?.addresses?.btc?.address || response?.addresses?.bitcoin?.address
-        };
-        
-        console.log("Extracted addresses:", addresses);
-        return addresses;
-      };
+      // Bitcoin addresses may not be available in all wallet connections
+      // This would need additional wallet-specific integration
+      const btcAddress = (userData as any)?.btcAddress?.p2wpkh;
 
-      const { btc } = getWalletAddresses(walletData);
-      
-      if (!btc) {
-        console.warn("No Bitcoin address found in wallet data. Available properties:", Object.keys(walletData));
-        if (walletData.addresses) {
-          console.warn("Available address properties:", Object.keys(walletData.addresses));
-        }
+      if (!btcAddress) {
+        console.warn("No Bitcoin address found in wallet data");
       }
-      
-      return btc || null;
+
+      return btcAddress || null;
     } catch (error) {
       console.error('❌ Failed to get current Bitcoin address:', error);
       return null;
