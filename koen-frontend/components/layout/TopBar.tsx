@@ -14,6 +14,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 /**
  * Props for the TopBar component
@@ -42,12 +43,12 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
             </svg>
           </button>
           {/* Logo */}
-          <div className="flex items-center gap-2 pr-4 border-r border-[#1E2329]">
+          <Link href="/" className="flex items-center gap-2 pr-4 border-r border-[#1E2329] hover:opacity-80 transition-opacity cursor-pointer">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-black font-bold text-sm">
               K
             </div>
             <span className="text-sm font-semibold text-white hidden lg:block">Kōen</span>
-          </div>
+          </Link>
 
           {/* Market Price Ticker */}
           <div className="flex items-center gap-6">
