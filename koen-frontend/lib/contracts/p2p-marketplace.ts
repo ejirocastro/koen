@@ -381,17 +381,22 @@ export async function getMarketplaceStats(
       network
     );
 
-    // Contract returns (ok {...}) - stats are directly in value
+    console.log('[getMarketplaceStats] Raw data:', JSON.stringify(data, null, 2));
+
+    // Contract returns (ok {...}) - stats tuple is in data.value.value
     if (!data.success || !data.value) {
+      console.error('[getMarketplaceStats] Data validation failed:', { success: data.success, hasValue: !!data.value });
       return null;
     }
 
-    const stats = data.value;
+    // Extract the tuple (needs double .value like other contract calls)
+    const stats = data.value.value;
+    console.log('[getMarketplaceStats] Stats object:', JSON.stringify(stats, null, 2));
 
     const totalVolumeLent = microKusdToKusd(BigInt(stats['total-volume-lent']?.value || 0));
     const totalLoansCreated = Number(stats['total-loans-created']?.value || 0);
 
-    return {
+    const result = {
       totalOffersCreated: Number(stats['total-offers-created']?.value || 0),
       totalRequestsCreated: Number(stats['total-requests-created']?.value || 0),
       totalLoansCreated,
@@ -404,6 +409,9 @@ export async function getMarketplaceStats(
       activeOffers: 0,
       activeRequests: 0,
     };
+
+    console.log('[getMarketplaceStats] ✅ Returning stats:', result);
+    return result;
   } catch (error) {
     console.error('Error fetching marketplace stats:', error);
     return null;

@@ -284,7 +284,10 @@ export default function DashboardPage() {
               {/* View All */}
               {filteredLoans.length > 0 && (
                 <div className="p-3 border-t border-[#2B3139] text-center">
-                  <button className="text-xs text-emerald-500 hover:text-emerald-400 transition-colors">
+                  <button
+                    onClick={() => router.push('/dashboard/loans')}
+                    className="text-xs text-emerald-500 hover:text-emerald-400 transition-colors"
+                  >
                     View All Loans →
                   </button>
                 </div>

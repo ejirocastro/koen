@@ -1,16 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { useWallet, useUserLoansWithHealth, useLoanHealth, useTokenBalances } from '@/lib/hooks';
+import { useQueryClient } from '@tanstack/react-query';
+import { useWallet, useUserLoansWithHealth, useTokenBalances } from '@/lib/hooks';
 import {
   microKusdToKusd,
   satoshisToSbtc,
   bpsToPercentage,
   blocksToDays,
 } from '@/lib/utils/format-helpers';
+import { repayLoan } from '@/lib/contracts/p2p-marketplace';
+import { exportLoansToCSV } from '@/lib/utils/export-helpers';
+import toast from 'react-hot-toast';
 
 export default function MyLoansPage() {
   const [activeTab, setActiveTab] = useState<'lender' | 'borrower'>('lender');
+  const [repayingLoanId, setRepayingLoanId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
 
   // Get wallet connection
   const { address, isConnected, connectWallet } = useWallet();
@@ -36,6 +42,71 @@ export default function MyLoansPage() {
   const avgHealth = loans && loans.length > 0
     ? loans.reduce((sum, loan) => sum + (loan.isAtRisk ? 100 : 150), 0) / loans.length
     : 165;
+
+  // Handle loan repayment
+  const handleRepayLoan = async (loanId: number) => {
+    setRepayingLoanId(loanId);
+    const toastId = toast.loading('Initiating loan repayment...');
+
+    try {
+      const result = await repayLoan(loanId);
+      toast.success(
+        <div>
+          <div className="font-semibold">Loan repayment submitted!</div>
+          <a
+            href={`https://explorer.hiro.so/txid/${result.txId}?chain=testnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs underline mt-1 block hover:text-emerald-300"
+          >
+            View transaction on Explorer
+          </a>
+          <div className="text-xs mt-1 opacity-80">Your collateral will be returned after confirmation (~10 min)</div>
+        </div>,
+        { id: toastId, duration: 10000 }
+      );
+
+      // Refetch loans after successful repayment
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['user-loans'] });
+        queryClient.invalidateQueries({ queryKey: ['loan-details'] });
+        queryClient.invalidateQueries({ queryKey: ['at-risk-loans'] });
+      }, 2000);
+    } catch (error: any) {
+      console.error('Error repaying loan:', error);
+      toast.error(
+        error.message || 'Failed to repay loan. Please try again.',
+        { id: toastId }
+      );
+    } finally {
+      setRepayingLoanId(null);
+    }
+  };
+
+  // Handle export to CSV
+  const handleExport = () => {
+    try {
+      // Get loans for current tab
+      const loansToExport = activeTab === 'lender' ? lenderLoans : borrowerLoans;
+
+      if (loansToExport.length === 0) {
+        toast.error(`No ${activeTab} loans to export`);
+        return;
+      }
+
+      // Export to CSV
+      exportLoansToCSV(loansToExport, activeTab);
+
+      // Show success message
+      toast.success(
+        `Exported ${loansToExport.length} loan${loansToExport.length !== 1 ? 's' : ''} to CSV`,
+        { duration: 3000 }
+      );
+    } catch (error: any) {
+      console.error('Error exporting loans:', error);
+      toast.error(error.message || 'Failed to export loans');
+    }
+  };
 
   if (!isConnected) {
     return (
@@ -160,7 +231,20 @@ export default function MyLoansPage() {
               </button>
             </div>
 
-            <button className="px-3 py-2 bg-[#2B3139] hover:bg-[#343840] text-sm text-[#848E9C] hover:text-white rounded-lg transition-colors flex items-center gap-2">
+            <button
+              onClick={handleExport}
+              disabled={activeTab === 'lender' ? lenderLoans.length === 0 : borrowerLoans.length === 0}
+              className={`px-3 py-2 bg-[#2B3139] hover:bg-[#343840] text-sm text-[#848E9C] hover:text-white rounded-lg transition-colors flex items-center gap-2 ${
+                (activeTab === 'lender' ? lenderLoans.length === 0 : borrowerLoans.length === 0)
+                  ? 'opacity-50 cursor-not-allowed'
+                  : ''
+              }`}
+              title={
+                (activeTab === 'lender' ? lenderLoans.length === 0 : borrowerLoans.length === 0)
+                  ? 'No loans to export'
+                  : `Export ${activeTab} loans to CSV`
+              }
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
@@ -302,11 +386,17 @@ export default function MyLoansPage() {
                         </td>
                         <td className="px-4 py-4 text-center">
                           {loan.status === 'active' ? (
-                            <button className="px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 text-xs font-semibold rounded border border-orange-500/30 hover:border-orange-500/50 transition-all">
-                              Repay
+                            <button
+                              onClick={() => handleRepayLoan(loan.loanId)}
+                              disabled={repayingLoanId === loan.loanId}
+                              className={`px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 text-xs font-semibold rounded border border-orange-500/30 hover:border-orange-500/50 transition-all ${
+                                repayingLoanId === loan.loanId ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                            >
+                              {repayingLoanId === loan.loanId ? 'Repaying...' : 'Repay'}
                             </button>
                           ) : (
-                            <button className="px-3 py-1.5 bg-[#2B3139] text-[#848E9C] text-xs font-semibold rounded">
+                            <button className="px-3 py-1.5 bg-[#2B3139] text-[#848E9C] text-xs font-semibold rounded cursor-not-allowed">
                               Closed
                             </button>
                           )}
