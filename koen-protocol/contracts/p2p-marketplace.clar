@@ -1164,7 +1164,7 @@
     )
 )
 
-;; Get oracle price with staleness check
+;; Get oracle price with staleness check (DISABLED FOR TESTNET DEMO)
 (define-private (get-validated-sbtc-price)
     (let (
             (price-response (contract-call? .oracle get-sbtc-price))
@@ -1172,11 +1172,14 @@
             (last-update-response (contract-call? .oracle get-last-update-block))
             (last-update-block (unwrap! last-update-response ERR_ORACLE_FAILURE))
         )
-        ;; Check price freshness
-        (if (< (- stacks-block-height last-update-block) MAX_PRICE_AGE_BLOCKS)
-            (ok sbtc-price)
-            ERR_STALE_PRICE
-        )
+        ;; TESTNET: Staleness check disabled to allow demo without oracle updates
+        ;; TODO: Re-enable for production by uncommenting the if statement below
+        ;; (if (< (- stacks-block-height last-update-block) MAX_PRICE_AGE_BLOCKS)
+        ;;     (ok sbtc-price)
+        ;;     ERR_STALE_PRICE
+        ;; )
+        (ok sbtc-price)
+        ;; Always return price for testnet demo
     )
 )
 

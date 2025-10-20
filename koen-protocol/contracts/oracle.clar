@@ -36,8 +36,8 @@
 
 ;; data maps
 (define-map price-history
-  uint  ;; block height
-  uint  ;; price at that block
+  uint ;; block height
+  uint ;; price at that block
 )
 
 ;; public functions
@@ -49,24 +49,30 @@
     (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
 
     ;; SECURITY: Validate price is within realistic bounds
-    (asserts! (and (>= new-price MIN_SBTC_PRICE)
-                   (<= new-price MAX_SBTC_PRICE))
-              ERR_INVALID_PRICE)
+    (asserts!
+      (and
+        (>= new-price MIN_SBTC_PRICE)
+        (<= new-price MAX_SBTC_PRICE)
+      )
+      ERR_INVALID_PRICE
+    )
 
     ;; SECURITY: Rate limit - prevent price changes > 20% per update
     (let ((current-price (var-get sbtc-price)))
       (if (> current-price u0) ;; Skip check for first price update
         (let (
-          ;; Calculate percentage change in basis points
-          (price-change-bps (if (> new-price current-price)
-            ;; Price increased: (new - current) * 10000 / current
-            (/ (* (- new-price current-price) u10000) current-price)
-            ;; Price decreased: (current - new) * 10000 / current
-            (/ (* (- current-price new-price) u10000) current-price)
-          ))
-        )
+            ;; Calculate percentage change in basis points
+            (price-change-bps (if (> new-price current-price)
+              ;; Price increased: (new - current) * 10000 / current
+              (/ (* (- new-price current-price) u10000) current-price)
+              ;; Price decreased: (current - new) * 10000 / current
+              (/ (* (- current-price new-price) u10000) current-price)
+            ))
+          )
           ;; Assert price change is within allowed threshold
-          (asserts! (<= price-change-bps MAX_PRICE_CHANGE_BPS) ERR_PRICE_CHANGE_TOO_LARGE)
+          (asserts! (<= price-change-bps MAX_PRICE_CHANGE_BPS)
+            ERR_PRICE_CHANGE_TOO_LARGE
+          )
         )
         true ;; First update, no rate limit
       )
@@ -89,7 +95,7 @@
           (/ (* (- (var-get sbtc-price) new-price) u10000) (var-get sbtc-price))
         )
         u0
-      )
+      ),
     })
     (ok new-price)
   )
@@ -114,9 +120,7 @@
 
 ;; Calculate USD value of sBTC amount
 (define-read-only (get-sbtc-value (sbtc-amount uint))
-  (let (
-    (price (var-get sbtc-price))
-  )
+  (let ((price (var-get sbtc-price)))
     ;; sbtc-amount is in satoshis (8 decimals)
     ;; price is in micro-USD (6 decimals)
     ;; Result should be in micro-USD (6 decimals)
@@ -127,9 +131,7 @@
 
 ;; Calculate how much sBTC equals a USD value
 (define-read-only (get-sbtc-amount (usd-value uint))
-  (let (
-    (price (var-get sbtc-price))
-  )
+  (let ((price (var-get sbtc-price)))
     ;; usd-value is in micro-USD (6 decimals)
     ;; price is in micro-USD per BTC (6 decimals)
     ;; Result should be in satoshis (8 decimals)
@@ -150,9 +152,7 @@
 
 ;; Helper: Check if price is stale (not updated in last 1000 blocks ~7 days)
 (define-read-only (is-price-fresh)
-  (let (
-    (last-update (var-get last-update-block))
-  )
+  (let ((last-update (var-get last-update-block)))
     (ok (< (- stacks-block-height last-update) u1000))
   )
 )
