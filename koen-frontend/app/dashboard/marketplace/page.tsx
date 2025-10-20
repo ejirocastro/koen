@@ -12,6 +12,45 @@ export default function MarketplacePage() {
   const [matchingRequestId, setMatchingRequestId] = useState<number | null>(null);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
 
+  // Helper function to get reputation tier from score
+  const getReputationTier = (score: number): 'bronze' | 'silver' | 'gold' => {
+    if (score >= 1000) return 'gold';
+    if (score >= 500) return 'silver';
+    return 'bronze';
+  };
+
+  // Helper function to get tier color and styling
+  const getTierBadge = (score: number) => {
+    const tier = getReputationTier(score);
+    const configs = {
+      gold: {
+        bg: 'bg-yellow-500/10',
+        text: 'text-yellow-500',
+        border: 'border-yellow-500/30',
+        emoji: '🏆',
+        label: 'GOLD',
+        discount: '20% APR discount'
+      },
+      silver: {
+        bg: 'bg-gray-400/10',
+        text: 'text-gray-400',
+        border: 'border-gray-400/30',
+        emoji: '🥈',
+        label: 'SILVER',
+        discount: '10% APR discount'
+      },
+      bronze: {
+        bg: 'bg-orange-700/10',
+        text: 'text-orange-700',
+        border: 'border-orange-700/30',
+        emoji: '🥉',
+        label: 'BRONZE',
+        discount: 'No discount'
+      },
+    };
+    return configs[tier];
+  };
+
   // Fetch real data from blockchain
   const { data: offers, isLoading: offersLoading, refetch: refetchOffers } = useActiveOffers(50);
   const { data: requests, isLoading: requestsLoading, refetch: refetchRequests } = useActiveRequests(50);
@@ -240,6 +279,7 @@ export default function MarketplacePage() {
                     <th className="px-4 py-3 text-right text-xs font-medium text-[#848E9C]">Amount</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-[#848E9C]">Min APR</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-[#848E9C]">Max Duration</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-[#848E9C]">Min Reputation</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-[#848E9C]">Min Collateral</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-[#848E9C]">Max LTV</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-[#848E9C]">Status</th>
@@ -272,6 +312,18 @@ export default function MarketplacePage() {
                         <span className="text-sm text-white tabular-nums">
                           {Math.round(offer.duration / 144)} days
                         </span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {offer.minReputation > 0 ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-sm text-white font-semibold">{offer.minReputation}</span>
+                            <span className="text-xs text-[#848E9C]">
+                              {getReputationTier(offer.minReputation).toUpperCase()}+
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-emerald-500">No requirement</span>
+                        )}
                       </td>
                       <td className="px-4 py-4 text-right">
                         <span className="text-sm text-[#848E9C]">
@@ -335,6 +387,7 @@ export default function MarketplacePage() {
                   <tr className="border-b border-[#2B3139]">
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#848E9C]">Request ID</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#848E9C]">Borrower</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-[#848E9C]">Reputation</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-[#848E9C]">Amount</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-[#848E9C]">Max APR</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-[#848E9C]">Duration</th>
@@ -351,6 +404,21 @@ export default function MarketplacePage() {
                       </td>
                       <td className="px-4 py-4">
                         <span className="text-sm text-white font-mono">{request.borrower.substring(0, 8)}...</span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {(() => {
+                          const badge = getTierBadge(request.reputationScore);
+                          return (
+                            <div className="flex flex-col items-center gap-1">
+                              <div className={`inline-flex items-center gap-1 px-2 py-1 ${badge.bg} ${badge.border} border rounded text-xs font-semibold ${badge.text}`}>
+                                <span>{badge.emoji}</span>
+                                <span>{badge.label}</span>
+                              </div>
+                              <span className="text-xs text-[#848E9C]">{request.reputationScore}</span>
+                              <span className="text-xs text-[#848E9C] italic">{badge.discount}</span>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-4 text-right">
                         <div className="flex flex-col items-end">

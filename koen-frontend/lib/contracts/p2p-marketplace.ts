@@ -625,8 +625,8 @@ export async function createLendingOffer(params: {
  */
 export async function createBorrowRequest(params: {
   amount: number; // In kUSD
-  maxApr: number; // Percentage
-  duration: number; // In days
+  maxApr: number; // In basis points (already converted from percentage)
+  duration: number; // In blocks (already converted from days)
   collateralAmount: number; // In sBTC
 }): Promise<{ txId: string }> {
   const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
@@ -636,8 +636,8 @@ export async function createBorrowRequest(params: {
   const network = getNetwork();
 
   const amountMicro = kusdToMicroKusd(params.amount);
-  const maxAprBps = percentageToBps(params.maxApr);
-  const durationBlocks = daysToBlocks(params.duration);
+  const maxAprBps = params.maxApr; // Already converted to bps in create page
+  const durationBlocks = params.duration; // Already converted to blocks in create page
   const collateralSatoshis = sbtcToSatoshis(params.collateralAmount);
 
   const functionArgs = [
