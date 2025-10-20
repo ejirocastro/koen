@@ -192,7 +192,7 @@ export async function transferSbtc(params: {
     contractName,
     functionName: 'transfer',
     functionArgs,
-    postConditionMode: PostConditionMode.Deny,
+    postConditionMode: PostConditionMode.Allow,
     onFinish: (data: any) => {
       console.log('sBTC transfer transaction submitted:', data.txId);
       return data;

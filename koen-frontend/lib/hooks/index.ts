@@ -4,3 +4,4 @@ export * from './useMarketplace';
 export * from './useLoans';
 export * from './useTokens';
 export * from './useReputation';
+export * from './useOracle';

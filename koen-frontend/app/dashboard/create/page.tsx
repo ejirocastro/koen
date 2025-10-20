@@ -22,7 +22,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useWallet, useTokenBalances, useMarketplaceStats } from '@/lib/hooks';
+import { useRouter } from 'next/navigation';
+import { useWallet, useTokenBalances, useMarketplaceStats, useOracleFreshness } from '@/lib/hooks';
 import { microKusdToKusd, satoshisToSbtc, daysToBlocks, percentageToBps, sbtcToSatoshis, kusdToMicroKusd } from '@/lib/utils/format-helpers';
 import { createLendingOffer, createBorrowRequest } from '@/lib/contracts/p2p-marketplace';
 import { requestKusdFaucet } from '@/lib/contracts/kusd-token';
@@ -30,6 +31,8 @@ import { updateSbtcPrice } from '@/lib/contracts/oracle';
 import toast from 'react-hot-toast';
 
 export default function CreatePage() {
+  const router = useRouter();
+
   // UI state management
   const [activeTab, setActiveTab] = useState<'offer' | 'request'>('offer');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,6 +56,7 @@ export default function CreatePage() {
   // Fetch real data
   const { kusd, sbtc, isLoading: balancesLoading } = useTokenBalances(address);
   const { data: stats, isLoading: statsLoading } = useMarketplaceStats();
+  const { data: oracleFreshness, refetch: refetchOracle } = useOracleFreshness();
 
   const isLoading = balancesLoading || statsLoading;
 
@@ -147,7 +151,7 @@ export default function CreatePage() {
       const txId = result.txId;
       toast.success(
         <div>
-          <div>Transaction submitted!</div>
+          <div>Offer created successfully!</div>
           <a
             href={`https://explorer.hiro.so/txid/${txId}?chain=testnet`}
             target="_blank"
@@ -156,22 +160,15 @@ export default function CreatePage() {
           >
             View on Explorer
           </a>
-          <div className="text-xs mt-1">Your offer will appear after confirmation (~10 min)</div>
+          <div className="text-xs mt-1">Redirecting to marketplace...</div>
         </div>,
-        { id: toastId, duration: 8000 }
+        { id: toastId, duration: 4000 }
       );
 
-      // Reset form
-      setFormData({
-        amount: '',
-        apr: '',
-        duration: '90',
-        collateral: 'sBTC',
-        collateralRatio: '150',
-        minReputation: '0',
-        collateralAmount: '',
-      });
-      setAgreeToTerms(false);
+      // Navigate to marketplace to see the offer
+      setTimeout(() => {
+        router.push('/dashboard/marketplace');
+      }, 2000);
     } catch (error: any) {
       console.error('Error creating offer:', error);
       toast.error(error.message || 'Failed to create lending offer', { id: toastId });
@@ -203,7 +200,7 @@ export default function CreatePage() {
       const txId = result.txId;
       toast.success(
         <div>
-          <div>Transaction submitted!</div>
+          <div>Request created successfully!</div>
           <a
             href={`https://explorer.hiro.so/txid/${txId}?chain=testnet`}
             target="_blank"
@@ -212,22 +209,15 @@ export default function CreatePage() {
           >
             View on Explorer
           </a>
-          <div className="text-xs mt-1">Your request will appear after confirmation (~10 min)</div>
+          <div className="text-xs mt-1">Redirecting to marketplace...</div>
         </div>,
-        { id: toastId, duration: 8000 }
+        { id: toastId, duration: 4000 }
       );
 
-      // Reset form
-      setFormData({
-        amount: '',
-        apr: '',
-        duration: '90',
-        collateral: 'sBTC',
-        collateralRatio: '150',
-        minReputation: '0',
-        collateralAmount: '',
-      });
-      setAgreeToTerms(false);
+      // Navigate to marketplace to see the request
+      setTimeout(() => {
+        router.push('/dashboard/marketplace');
+      }, 2000);
     } catch (error: any) {
       console.error('Error creating request:', error);
       toast.error(error.message || 'Failed to create borrow request', { id: toastId });
@@ -269,7 +259,7 @@ export default function CreatePage() {
       const result = await updateSbtcPrice(96420);
       toast.success(
         <>
-          Oracle price updated! Transaction: {' '}
+          Oracle price update submitted! Transaction: {' '}
           <a
             href={`https://explorer.hiro.so/txid/${result.txId}?chain=testnet`}
             target="_blank"
@@ -279,13 +269,33 @@ export default function CreatePage() {
             {result.txId.slice(0, 8)}...
           </a>
           <br />
-          <span className="text-xs">Wait ~10 seconds, then try creating an offer.</span>
+          <span className="text-xs">⏳ Waiting for confirmation (~1-2 min). Price will be fresh after confirmation.</span>
         </>,
         {
           id: toastId,
-          duration: 10000,
+          duration: 15000,
         }
       );
+
+      // Poll for oracle freshness update every 10 seconds for up to 3 minutes
+      let attempts = 0;
+      const maxAttempts = 18; // 3 minutes
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        const freshness = await refetchOracle();
+
+        if (freshness.data?.isFresh) {
+          clearInterval(pollInterval);
+          toast.success('✅ Oracle price is now fresh! You can create offers/requests now.', {
+            duration: 8000,
+          });
+        } else if (attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+          toast('Oracle update taking longer than expected. Please check the transaction status.', {
+            duration: 6000,
+          });
+        }
+      }, 10000);
     } catch (error: any) {
       console.error('Error updating oracle:', error);
       toast.error(error.message || 'Failed to update oracle price', { id: toastId });
@@ -399,29 +409,50 @@ export default function CreatePage() {
             </div>
           </div>
 
-          {/* Oracle Price Update Button */}
-          <div className="p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
+          {/* Oracle Price Status & Update Button */}
+          <div className={`p-4 border rounded-lg ${
+            oracleFreshness?.isFresh
+              ? 'bg-emerald-500/5 border-emerald-500/20'
+              : 'bg-yellow-500/5 border-yellow-500/20'
+          }`}>
             <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
+              {oracleFreshness?.isFresh ? (
+                <svg className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              )}
               <div className="flex-1">
-                <p className="text-sm text-yellow-500 font-medium mb-1">Oracle Price Update Required</p>
-                <p className="text-xs text-[#848E9C] mb-3">
-                  The sBTC price oracle needs to be updated before creating offers. Click below to update it to the current market price ($96,420).
+                <p className={`text-sm font-medium mb-1 ${
+                  oracleFreshness?.isFresh ? 'text-emerald-500' : 'text-yellow-500'
+                }`}>
+                  {oracleFreshness?.isFresh ? '✅ Oracle Price is Fresh' : '⚠️ Oracle Price Update Required'}
                 </p>
-                <button
-                  onClick={handleUpdateOraclePrice}
-                  disabled={isSubmitting}
-                  className={`px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-500 text-xs font-semibold transition-all flex items-center gap-2 ${
-                    isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span>Update Oracle Price ($96,420)</span>
-                </button>
+                <p className="text-xs text-[#848E9C] mb-3">
+                  {oracleFreshness?.message || 'Checking oracle status...'}
+                  {oracleFreshness?.lastUpdateBlock !== undefined && oracleFreshness.lastUpdateBlock > 0 && (
+                    <span className="block mt-1">
+                      Last update: Block #{oracleFreshness.lastUpdateBlock}
+                    </span>
+                  )}
+                </p>
+                {!oracleFreshness?.isFresh && (
+                  <button
+                    onClick={handleUpdateOraclePrice}
+                    disabled={isSubmitting}
+                    className={`px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-500 text-xs font-semibold transition-all flex items-center gap-2 ${
+                      isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>Update Oracle Price ($96,420)</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

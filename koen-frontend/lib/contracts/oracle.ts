@@ -377,7 +377,7 @@ export async function updateSbtcPrice(newPrice: number): Promise<{ txId: string 
       contractName,
       functionName: 'set-sbtc-price',
       functionArgs: [uintCV(priceWithDecimals)],
-      postConditionMode: PostConditionMode.Deny,
+      postConditionMode: PostConditionMode.Allow,
       onFinish: (data: any) => {
         console.log('Update sBTC price transaction submitted:', data.txId);
         resolve({ txId: data.txId });

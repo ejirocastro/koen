@@ -1,18 +1,161 @@
 'use client';
 
 import { useState } from 'react';
-import { useActiveOffers, useActiveRequests, useMarketplaceStats } from '@/lib/hooks';
+import { useActiveOffers, useActiveRequests, useMarketplaceStats, useWallet } from '@/lib/hooks';
+import { matchOfferToRequest, cancelLendingOffer, cancelBorrowRequest } from '@/lib/contracts/p2p-marketplace';
+import toast from 'react-hot-toast';
 
 export default function MarketplacePage() {
   const [activeTab, setActiveTab] = useState<'offers' | 'requests'>('offers');
   const [filterAsset, setFilterAsset] = useState<'all' | 'sBTC' | 'kUSD'>('all');
+  const [matchingOfferId, setMatchingOfferId] = useState<number | null>(null);
+  const [matchingRequestId, setMatchingRequestId] = useState<number | null>(null);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
 
   // Fetch real data from blockchain
-  const { data: offers, isLoading: offersLoading } = useActiveOffers(50);
-  const { data: requests, isLoading: requestsLoading } = useActiveRequests(50);
+  const { data: offers, isLoading: offersLoading, refetch: refetchOffers } = useActiveOffers(50);
+  const { data: requests, isLoading: requestsLoading, refetch: refetchRequests } = useActiveRequests(50);
   const { data: stats } = useMarketplaceStats();
+  const { address, isConnected } = useWallet();
 
   const isLoading = offersLoading || requestsLoading;
+
+  // Handler for matching offer to request
+  const handleMatchOffer = async (offerId: number, requestId: number) => {
+    if (!isConnected) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    setMatchingOfferId(offerId);
+    setMatchingRequestId(requestId);
+    const toastId = toast.loading('Matching offer to request...');
+
+    try {
+      const result = await matchOfferToRequest(offerId, requestId);
+
+      toast.success(
+        <div>
+          <div>Loan created successfully!</div>
+          <a
+            href={`https://explorer.hiro.so/txid/${result.txId}?chain=testnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs underline mt-1 block"
+          >
+            View on Explorer
+          </a>
+          <div className="text-xs mt-1">Your loan will be active after confirmation (~10 min)</div>
+        </div>,
+        { id: toastId, duration: 8000 }
+      );
+
+      // Refetch data after successful match
+      setTimeout(() => {
+        refetchOffers();
+        refetchRequests();
+      }, 2000);
+    } catch (error: any) {
+      console.error('Error matching offer to request:', error);
+      toast.error(error.message || 'Failed to match offer. Please try again.', { id: toastId });
+    } finally {
+      setMatchingOfferId(null);
+      setMatchingRequestId(null);
+    }
+  };
+
+  // Handler for cancelling lending offer
+  const handleCancelOffer = async (offerId: number) => {
+    if (!isConnected) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    setCancellingId(offerId);
+    const toastId = toast.loading('Cancelling offer...');
+
+    try {
+      const result = await cancelLendingOffer(offerId);
+
+      toast.success(
+        <div>
+          <div>Offer cancelled successfully!</div>
+          <a
+            href={`https://explorer.hiro.so/txid/${result.txId}?chain=testnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs underline mt-1 block"
+          >
+            View on Explorer
+          </a>
+        </div>,
+        { id: toastId, duration: 6000 }
+      );
+
+      // Refetch offers after cancellation
+      setTimeout(() => {
+        refetchOffers();
+      }, 2000);
+    } catch (error: any) {
+      console.error('Error cancelling offer:', error);
+      toast.error(error.message || 'Failed to cancel offer. Please try again.', { id: toastId });
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  // Handler for cancelling borrow request
+  const handleCancelRequest = async (requestId: number) => {
+    if (!isConnected) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    setCancellingId(requestId);
+    const toastId = toast.loading('Cancelling request...');
+
+    try {
+      const result = await cancelBorrowRequest(requestId);
+
+      toast.success(
+        <div>
+          <div>Request cancelled successfully!</div>
+          <a
+            href={`https://explorer.hiro.so/txid/${result.txId}?chain=testnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs underline mt-1 block"
+          >
+            View on Explorer
+          </a>
+        </div>,
+        { id: toastId, duration: 6000 }
+      );
+
+      // Refetch requests after cancellation
+      setTimeout(() => {
+        refetchRequests();
+      }, 2000);
+    } catch (error: any) {
+      console.error('Error cancelling request:', error);
+      toast.error(error.message || 'Failed to cancel request. Please try again.', { id: toastId });
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  // Filter offers/requests based on selected asset
+  const filteredOffers = offers?.filter(offer => {
+    if (filterAsset === 'all') return true;
+    // All offers are in kUSD for now
+    return filterAsset === 'kUSD';
+  });
+
+  const filteredRequests = requests?.filter(request => {
+    if (filterAsset === 'all') return true;
+    // All requests borrow kUSD and deposit sBTC
+    return filterAsset === 'kUSD' || filterAsset === 'sBTC';
+  });
 
   return (
     <div className="min-h-screen bg-[#0B0E11] text-white p-4">
@@ -35,7 +178,7 @@ export default function MarketplacePage() {
                   : 'bg-[#2B3139] text-[#848E9C] hover:text-white'
               }`}
             >
-              Lending Offers ({offers?.length || 0})
+              Lending Offers ({filteredOffers?.length || 0})
             </button>
             <button
               onClick={() => setActiveTab('requests')}
@@ -45,7 +188,7 @@ export default function MarketplacePage() {
                   : 'bg-[#2B3139] text-[#848E9C] hover:text-white'
               }`}
             >
-              Borrow Requests ({requests?.length || 0})
+              Borrow Requests ({filteredRequests?.length || 0})
             </button>
           </div>
 
@@ -61,11 +204,18 @@ export default function MarketplacePage() {
               <option value="sBTC">sBTC</option>
             </select>
 
-            <button className="px-3 py-2 bg-[#2B3139] hover:bg-[#343840] text-sm text-[#848E9C] hover:text-white rounded-lg transition-colors flex items-center gap-2">
+            <button
+              onClick={() => {
+                refetchOffers();
+                refetchRequests();
+                toast.success('Refreshing marketplace data...', { duration: 2000 });
+              }}
+              className="px-3 py-2 bg-[#2B3139] hover:bg-[#343840] text-sm text-[#848E9C] hover:text-white rounded-lg transition-colors flex items-center gap-2"
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              <span>Filter</span>
+              <span>Refresh</span>
             </button>
           </div>
         </div>
@@ -81,7 +231,7 @@ export default function MarketplacePage() {
         {/* Lending Offers Table */}
         {activeTab === 'offers' && !isLoading && (
           <div className="overflow-x-auto">
-            {offers && offers.length > 0 ? (
+            {filteredOffers && filteredOffers.length > 0 ? (
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#2B3139]">
@@ -97,7 +247,7 @@ export default function MarketplacePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {offers.map((offer) => (
+                  {filteredOffers.map((offer) => (
                     <tr key={offer.offerId} className="border-b border-[#2B3139] hover:bg-[#2B3139]/30 transition-colors group">
                       <td className="px-4 py-4">
                         <span className="text-sm text-white font-mono">#{offer.offerId}</span>
@@ -139,9 +289,29 @@ export default function MarketplacePage() {
                         </span>
                       </td>
                       <td className="px-4 py-4 text-center">
-                        <button className="px-4 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-xs font-semibold rounded border border-emerald-500/30 hover:border-emerald-500/50 transition-all">
-                          Borrow
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          {address === offer.lender ? (
+                            <button
+                              onClick={() => handleCancelOffer(offer.offerId)}
+                              disabled={cancellingId === offer.offerId}
+                              className={`px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-semibold rounded border border-red-500/30 hover:border-red-500/50 transition-all ${
+                                cancellingId === offer.offerId ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                            >
+                              {cancellingId === offer.offerId ? 'Cancelling...' : 'Cancel'}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                // For now, show a message to create a matching request
+                                toast.error('Please create a borrow request first, then match from the Requests tab');
+                              }}
+                              className="px-4 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-xs font-semibold rounded border border-emerald-500/30 hover:border-emerald-500/50 transition-all"
+                            >
+                              Match
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -159,7 +329,7 @@ export default function MarketplacePage() {
         {/* Borrow Requests Table */}
         {activeTab === 'requests' && !isLoading && (
           <div className="overflow-x-auto">
-            {requests && requests.length > 0 ? (
+            {filteredRequests && filteredRequests.length > 0 ? (
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#2B3139]">
@@ -174,7 +344,7 @@ export default function MarketplacePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {requests.map((request) => (
+                  {filteredRequests.map((request) => (
                     <tr key={request.requestId} className="border-b border-[#2B3139] hover:bg-[#2B3139]/30 transition-colors group">
                       <td className="px-4 py-4">
                         <span className="text-sm text-white font-mono">#{request.requestId}</span>
@@ -211,9 +381,45 @@ export default function MarketplacePage() {
                         </span>
                       </td>
                       <td className="px-4 py-4 text-center">
-                        <button className="px-4 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 text-xs font-semibold rounded border border-orange-500/30 hover:border-orange-500/50 transition-all">
-                          Lend
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          {address === request.borrower ? (
+                            <button
+                              onClick={() => handleCancelRequest(request.requestId)}
+                              disabled={cancellingId === request.requestId}
+                              className={`px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-semibold rounded border border-red-500/30 hover:border-red-500/50 transition-all ${
+                                cancellingId === request.requestId ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                            >
+                              {cancellingId === request.requestId ? 'Cancelling...' : 'Cancel'}
+                            </button>
+                          ) : offers && offers.length > 0 ? (
+                            <select
+                              onChange={(e) => {
+                                const offerId = parseInt(e.target.value);
+                                if (offerId > 0) {
+                                  handleMatchOffer(offerId, request.requestId);
+                                  e.target.value = ''; // Reset select
+                                }
+                              }}
+                              disabled={matchingRequestId === request.requestId}
+                              className="px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 text-xs font-semibold rounded border border-orange-500/30 hover:border-orange-500/50 transition-all focus:outline-none"
+                            >
+                              <option value="">Match with Offer</option>
+                              {offers.filter(o => o.status === 'open').map(offer => (
+                                <option key={offer.offerId} value={offer.offerId}>
+                                  Offer #{offer.offerId} - ${offer.amount.toLocaleString()} @ {offer.apr.toFixed(1)}%
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <button
+                              disabled
+                              className="px-4 py-1.5 bg-gray-500/10 text-gray-500 text-xs font-semibold rounded border border-gray-500/30 cursor-not-allowed"
+                            >
+                              No Offers
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -231,7 +437,7 @@ export default function MarketplacePage() {
         {/* Footer */}
         <div className="p-4 border-t border-[#2B3139] flex items-center justify-between">
           <span className="text-xs text-[#848E9C]">
-            Showing {activeTab === 'offers' ? (offers?.length || 0) : (requests?.length || 0)}{' '}
+            Showing {activeTab === 'offers' ? (filteredOffers?.length || 0) : (filteredRequests?.length || 0)}{' '}
             {activeTab === 'offers' ? 'offers' : 'requests'}
           </span>
         </div>

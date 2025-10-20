@@ -37,7 +37,7 @@ export function useActiveOffers(maxCount: number = 50) {
         const startId = Math.max(1, nextOfferId - maxCount);
         const endId = nextOfferId - 1; // next-offer-id is the NEXT one to be created
 
-        console.log(`[useActiveOffers] Fetching offers from ${startId} to ${endId}`);
+        console.log(`[useActiveOffers] Next offer ID: ${nextOfferId}, fetching offers from ${startId} to ${endId}`);
 
         // Fetch offers in smaller batches to avoid rate limiting
         const BATCH_SIZE = 5;
@@ -57,8 +57,14 @@ export function useActiveOffers(maxCount: number = 50) {
 
           // Filter out null results and inactive offers
           for (const offer of results) {
+            console.log(`[useActiveOffers] Offer fetched:`, offer);
             if (offer && offer.status === 'open') {
               offers.push(offer);
+              console.log(`[useActiveOffers] ✓ Added offer #${offer.offerId} (status: ${offer.status})`);
+            } else if (offer) {
+              console.log(`[useActiveOffers] ✗ Skipped offer (status: ${offer.status})`);
+            } else {
+              console.log(`[useActiveOffers] ✗ Null offer`);
             }
           }
 
@@ -73,10 +79,10 @@ export function useActiveOffers(maxCount: number = 50) {
 
       return offers;
     },
-    // Refetch every 2 minutes (reduced frequency to respect rate limits)
-    refetchInterval: 120000,
+    // Refetch every 15 seconds for better UX (offers appear faster)
+    refetchInterval: 15000,
     retry: 1, // Only retry once
-    staleTime: 60000, // Consider data fresh for 1 minute
+    staleTime: 10000, // Consider data fresh for 10 seconds
   });
 }
 
@@ -140,10 +146,10 @@ export function useActiveRequests(maxCount: number = 50) {
 
       return requests;
     },
-    // Refetch every 2 minutes (reduced frequency to respect rate limits)
-    refetchInterval: 120000,
+    // Refetch every 15 seconds for better UX (requests appear faster)
+    refetchInterval: 15000,
     retry: 1, // Only retry once
-    staleTime: 60000, // Consider data fresh for 1 minute
+    staleTime: 10000, // Consider data fresh for 10 seconds
   });
 }
 

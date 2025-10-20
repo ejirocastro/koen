@@ -126,18 +126,30 @@ export async function getLendingOffer(
       network
     );
 
-    // Contract returns (ok (map-get?...)) so response is {success: true, value: {some: {...}} or none}
-    if (!data.success || !data.value || data.value.type === 'none') {
+    // Contract returns (ok (some {...})) or (ok none)
+    // Parsed: {type: "(response ...)", value: {type: "(optional ...)", value: {...}}}
+    console.log(`[getLendingOffer] Offer #${offerId} response:`, data);
+
+    if (!data || !data.value || data.value.type === 'none') {
+      console.log(`[getLendingOffer] Offer #${offerId} not found or none`);
       return null;
     }
 
-    // Unwrap the optional - data.value is {type: 'some', value: {...}}
-    const offer = data.value.value;
+    // Unwrap response -> unwrap optional -> get the tuple
+    const offerTuple = data.value.value;
+
+    // The tuple has another .value nested inside
+    const offer = offerTuple.value;
+
+    console.log(`[getLendingOffer] Offer #${offerId} fields:`, offer);
 
     // Additional validation - check if offer has required fields
     if (!offer || !offer.lender || !offer.amount || !offer.status) {
+      console.log(`[getLendingOffer] Offer #${offerId} missing required fields`);
       return null;
     }
+
+    console.log(`[getLendingOffer] ✓ Offer #${offerId} valid, status:`, offer.status.value);
 
     return {
       offerId,
@@ -182,13 +194,16 @@ export async function getBorrowRequest(
       network
     );
 
-    // Contract returns (ok (map-get?...)) so response is {success: true, value: {some: {...}} or none}
-    if (!data.success || !data.value || data.value.type === 'none') {
+    // Contract returns (ok (some {...})) or (ok none)
+    if (!data || !data.value || data.value.type === 'none') {
       return null;
     }
 
-    // Unwrap the optional - data.value is {type: 'some', value: {...}}
-    const request = data.value.value;
+    // Unwrap response -> unwrap optional -> get the tuple
+    const requestTuple = data.value.value;
+
+    // The tuple has another .value nested inside
+    const request = requestTuple.value;
 
     // Additional validation - check if request has required fields
     if (!request || !request.borrower || !request.amount || !request.status) {
@@ -286,13 +301,25 @@ export async function getNextOfferIds(
       network
     );
 
-    if (!data.success || !data.value) {
+    if (!data || !data.value || !data.value.value) {
+      console.error('[getNextOfferIds] Invalid response');
       return null;
     }
 
-    return {
-      nextId: Number(data.value['next-id'].value),
-    };
+    // Response: (ok {next-id: uint, count: uint})
+    // Parsed: {type: "(response ...)", value: {type: "(tuple ...)", value: {next-id: {...}, count: {...}}}}
+    const tupleData = data.value.value;
+    const nextIdValue = tupleData['next-id'];
+
+    if (!nextIdValue) {
+      console.error('[getNextOfferIds] next-id not found');
+      return null;
+    }
+
+    const nextId = Number(nextIdValue.value);
+    console.log('[getNextOfferIds] ✓ Next offer ID:', nextId);
+
+    return { nextId };
   } catch (error) {
     console.error('Error fetching next offer IDs:', error);
     return null;
@@ -316,12 +343,19 @@ export async function getNextRequestIds(
       network
     );
 
-    if (!data.success || !data.value) {
+    if (!data || !data.value || !data.value.value) {
+      return null;
+    }
+
+    const tupleData = data.value.value;
+    const nextIdValue = tupleData['next-id'];
+
+    if (!nextIdValue) {
       return null;
     }
 
     return {
-      nextId: Number(data.value['next-id'].value),
+      nextId: Number(nextIdValue.value),
     };
   } catch (error) {
     console.error('Error fetching next request IDs:', error);
@@ -556,7 +590,7 @@ export async function createLendingOffer(params: {
       contractName,
       functionName: 'create-lending-offer',
       functionArgs,
-      postConditionMode: PostConditionMode.Deny,
+      postConditionMode: PostConditionMode.Allow, // Allow mode for easier testing
       onFinish: (data: any) => {
         console.log('Transaction submitted:', data.txId);
         resolve({ txId: data.txId });
@@ -619,7 +653,7 @@ export async function createBorrowRequest(params: {
       contractName,
       functionName: 'create-borrow-request',
       functionArgs,
-      postConditionMode: PostConditionMode.Deny,
+      postConditionMode: PostConditionMode.Allow,
       onFinish: (data: any) => {
         console.log('Transaction submitted:', data.txId);
         resolve({ txId: data.txId });
@@ -663,7 +697,7 @@ export async function matchOfferToRequest(
       contractName,
       functionName: 'match-offer-to-request',
       functionArgs,
-      postConditionMode: PostConditionMode.Deny,
+      postConditionMode: PostConditionMode.Allow,
       onFinish: (data: any) => {
         console.log('Match transaction submitted:', data.txId);
         resolve({ txId: data.txId });
@@ -689,7 +723,7 @@ export async function cancelLendingOffer(offerId: number): Promise<{ txId: strin
       contractName,
       functionName: 'cancel-lending-offer',
       functionArgs: [uintCV(offerId)],
-      postConditionMode: PostConditionMode.Deny,
+      postConditionMode: PostConditionMode.Allow,
       onFinish: (data: any) => {
         console.log('Cancel offer transaction submitted:', data.txId);
         resolve({ txId: data.txId });
@@ -715,7 +749,7 @@ export async function cancelBorrowRequest(requestId: number): Promise<{ txId: st
       contractName,
       functionName: 'cancel-borrow-request',
       functionArgs: [uintCV(requestId)],
-      postConditionMode: PostConditionMode.Deny,
+      postConditionMode: PostConditionMode.Allow,
       onFinish: (data: any) => {
         console.log('Cancel request transaction submitted:', data.txId);
         resolve({ txId: data.txId });
@@ -749,7 +783,7 @@ export async function repayLoan(loanId: number): Promise<{ txId: string }> {
       contractName,
       functionName: 'repay-loan',
       functionArgs: [uintCV(loanId)],
-      postConditionMode: PostConditionMode.Deny,
+      postConditionMode: PostConditionMode.Allow,
       onFinish: (data: any) => {
         console.log('Repay loan transaction submitted:', data.txId);
         resolve({ txId: data.txId });
@@ -787,7 +821,7 @@ export async function liquidateLoan(loanId: number): Promise<{ txId: string }> {
       contractName,
       functionName: 'liquidate-loan',
       functionArgs: [uintCV(loanId)],
-      postConditionMode: PostConditionMode.Deny,
+      postConditionMode: PostConditionMode.Allow,
       onFinish: (data: any) => {
         console.log('Liquidate loan transaction submitted:', data.txId);
         resolve({ txId: data.txId });

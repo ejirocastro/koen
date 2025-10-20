@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kōen Offer Flow Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #0B0E11; color: #fff; }
+        .test { margin: 20px 0; padding: 10px; border: 1px solid #2B3139; }
+        .success { color: #0ECB81; }
+        .error { color: #F6465D; }
+        .info { color: #848E9C; }
+        pre { background: #1E2329; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Kōen Protocol - Offer Flow Test</h1>
+    <div id="results"></div>
+
+    <script>
+        const CONTRACT_ADDRESS = "ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3";
+        const CONTRACT_NAME = "p2p-marketplace-v5";
+        const API_BASE = "https://api.testnet.hiro.so";
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test ${type}`;
+            div.innerHTML = message;
+            document.getElementById('results').appendChild(div);
+        }
+
+        async function callReadOnly(functionName, args) {
+            const url = `${API_BASE}/v2/contracts/call-read/${CONTRACT_ADDRESS}/${CONTRACT_NAME}/${functionName}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sender: CONTRACT_ADDRESS,
+                    arguments: args
+                })
+            });
+            return await response.json();
+        }
+
+        function hexToUint(hex) {
+            // Extract uint value from hex (skip 0x07 prefix, then get uint bytes)
+            const cleanHex = hex.replace('0x', '');
+            // For uint, the value is after the type byte (01)
+            const valueHex = cleanHex.substring(2);
+            return parseInt(valueHex, 16);
+        }
+
+        function parseOffer(hex) {
+            // This is a simplified parser - in production use @stacks/transactions
+            const result = {
+                raw: hex,
+                parsed: "Use browser console to decode with @stacks/transactions"
+            };
+            return result;
+        }
+
+        async function runTests() {
+            log('<h2>📊 Testing Offer Creation Flow</h2>');
+
+            // Test 1: Check next-offer-id
+            log('<h3>Test 1: Checking next-offer-id</h3>');
+            try {
+                const nextIdResult = await callReadOnly('get-next-offer-ids', ['0x0100000000000000000000000000000001']);
+                log(`✓ API Response: <pre>${JSON.stringify(nextIdResult, null, 2)}</pre>`, 'success');
+
+                if (nextIdResult.okay) {
+                    const hex = nextIdResult.result;
+                    // Parse next-id from tuple
+                    log(`Next offer ID (hex): ${hex}`, 'info');
+                }
+            } catch (e) {
+                log(`✗ Error: ${e.message}`, 'error');
+            }
+
+            // Test 2: Try to fetch offers 1, 2, 3
+            log('<h3>Test 2: Fetching Individual Offers</h3>');
+            for (let i = 1; i <= 3; i++) {
+                try {
+                    const offerHex = '0x' + ('0100000000000000000000000000000000' + i.toString(16)).slice(-32);
+                    const offerResult = await callReadOnly('get-lending-offer', [offerHex]);
+
+                    if (offerResult.okay && offerResult.result.includes('0d000000046f70656e')) {
+                        log(`✓ Offer #${i} EXISTS (status: open)`, 'success');
+                        log(`<pre>${JSON.stringify(offerResult, null, 2)}</pre>`, 'info');
+                    } else if (offerResult.okay && offerResult.result === '0x0709') {
+                        log(`ℹ Offer #${i} does not exist (none)`, 'info');
+                    } else {
+                        log(`? Offer #${i} status unclear: ${offerResult.result}`, 'info');
+                    }
+                } catch (e) {
+                    log(`✗ Error fetching offer #${i}: ${e.message}`, 'error');
+                }
+            }
+
+            // Test 3: Check recent transactions
+            log('<h3>Test 3: Checking Recent Transactions</h3>');
+            try {
+                const txUrl = `${API_BASE}/extended/v1/address/${CONTRACT_ADDRESS}.${CONTRACT_NAME}/transactions?limit=5`;
+                const txResponse = await fetch(txUrl);
+                const txData = await txResponse.json();
+
+                log(`✓ Found ${txData.total} total transactions`, 'success');
+
+                const createOfferTxs = txData.results.filter(tx =>
+                    tx.tx_type === 'contract_call' &&
+                    tx.contract_call?.function_name === 'create-lending-offer'
+                );
+
+                log(`✓ Found ${createOfferTxs.length} create-lending-offer transactions`, 'success');
+
+                createOfferTxs.forEach((tx, idx) => {
+                    log(`<pre>Transaction ${idx + 1}:
+TxID: ${tx.tx_id}
+Status: ${tx.tx_status}
+Result: ${tx.tx_result.repr}
+Time: ${new Date(tx.block_time_iso).toLocaleString()}</pre>`, 'info');
+                });
+            } catch (e) {
+                log(`✗ Error fetching transactions: ${e.message}`, 'error');
+            }
+
+            // Test 4: Summary
+            log('<h3>📝 Summary</h3>');
+            log(`
+<div style="background: #1E2329; padding: 15px; border-left: 3px solid #0ECB81;">
+<strong>What to check:</strong>
+<ul>
+    <li>Is next-offer-id > 1? (means offers were created)</li>
+    <li>Do offers #1, #2 exist with status "open"?</li>
+    <li>Are there recent create-lending-offer transactions with (ok u1), (ok u2)?</li>
+</ul>
+
+<strong>If offers exist but frontend doesn't show them:</strong>
+<ul>
+    <li>Check browser console for [useActiveOffers] logs</li>
+    <li>Check if getLendingOffer() is returning null</li>
+    <li>Check if status filtering is working (status === 'open')</li>
+    <li>Verify proxy cache is cleared (restart dev server)</li>
+</ul>
+</div>
+            `, 'info');
+        }
+
+        runTests();
+    </script>
+</body>
+</html>

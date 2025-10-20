@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Simple in-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 120000; // 2 minutes cache (increased to reduce API calls)
+const CACHE_TTL = 10000; // 10 seconds cache (reduced for better UX - offers appear faster)
 
 // Rate limiting: track requests per minute
 const rateLimitMap = new Map<string, number[]>();

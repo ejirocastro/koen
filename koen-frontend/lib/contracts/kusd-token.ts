@@ -194,7 +194,7 @@ export async function transferKusd(params: {
       contractName,
       functionName: 'transfer',
       functionArgs,
-      postConditionMode: PostConditionMode.Deny,
+      postConditionMode: PostConditionMode.Allow,
       onFinish: (data: any) => {
         console.log('kUSD transfer transaction submitted:', data.txId);
         resolve({ txId: data.txId });

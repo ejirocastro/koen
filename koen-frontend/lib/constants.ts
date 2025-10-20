@@ -1,10 +1,10 @@
 // Contract addresses - Testnet Deployment
-// Deployed on: 2025-10-15
+// Deployed on: 2025-10-19
 // Network: Stacks Testnet
 export const CONTRACTS = {
-  // Core marketplace contracts - V4 with automatic reputation
-  P2P_MARKETPLACE: 'ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3.p2p-marketplace-v4',
-  REPUTATION_SBT: 'ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3.reputation-sbt-v4',
+  // Core marketplace contracts - V5 with oracle staleness fix
+  P2P_MARKETPLACE: 'ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3.p2p-marketplace-v5',
+  REPUTATION_SBT: 'ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3.reputation-sbt-v5',
   KUSD_TOKEN: 'ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3.kusd-token',
   ORACLE: 'ST7QHJ8ST6C8YBWVMN0CJDDNSGJQQ4S8QYGFGHN3.oracle',
 

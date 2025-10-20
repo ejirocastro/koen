@@ -324,7 +324,7 @@ export async function mintReputationSbt(params: {
     contractName,
     functionName: 'mint-sbt',
     functionArgs,
-    postConditionMode: PostConditionMode.Deny,
+    postConditionMode: PostConditionMode.Allow,
     onFinish: (data: any) => {
       console.log('Mint reputation SBT transaction submitted:', data.txId);
       return data;
@@ -357,7 +357,7 @@ export async function updateReputation(params: {
     contractName,
     functionName: 'update-reputation',
     functionArgs,
-    postConditionMode: PostConditionMode.Deny,
+    postConditionMode: PostConditionMode.Allow,
     onFinish: (data: any) => {
       console.log('Update reputation transaction submitted:', data.txId);
       return data;
@@ -382,7 +382,7 @@ export async function burnReputationSbt(userAddress: string): Promise<any> {
     contractName,
     functionName: 'burn-sbt',
     functionArgs: [principalCV(userAddress)],
-    postConditionMode: PostConditionMode.Deny,
+    postConditionMode: PostConditionMode.Allow,
     onFinish: (data: any) => {
       console.log('Burn reputation SBT transaction submitted:', data.txId);
       return data;

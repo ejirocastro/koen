@@ -4,7 +4,7 @@
  */
 
 import { StacksNetwork } from '@stacks/network';
-import { fetchCallReadOnlyFunction, ClarityValue, cvToJSON, cvToHex } from '@stacks/transactions';
+import { fetchCallReadOnlyFunction, ClarityValue, cvToJSON, cvToHex, hexToCV } from '@stacks/transactions';
 
 // Use Next.js API proxy instead of direct Hiro calls
 const USE_PROXY = typeof window !== 'undefined'; // Only in browser
@@ -132,10 +132,27 @@ async function callThroughProxy(
 
   const result = await response.json();
 
+  console.log('[Proxy] Raw response:', JSON.stringify(result).substring(0, 200));
+
   if (result.cached) {
     console.log('[Proxy] Returned from cache');
   }
 
+  // Parse hex result to Clarity JSON (same format as direct API)
+  if (result.okay && result.result) {
+    try {
+      const clarityValue = hexToCV(result.result);
+      const parsed = cvToJSON(clarityValue);
+      console.log('[Proxy] ✓ Parsed successfully:', JSON.stringify(parsed).substring(0, 200));
+      return parsed;
+    } catch (parseError: any) {
+      console.error('[Proxy] Failed to parse hex:', parseError.message);
+      console.error('[Proxy] Hex was:', result.result.substring(0, 100));
+      throw new Error('Failed to parse Clarity hex response');
+    }
+  }
+
+  console.error('[Proxy] Unexpected response format:', result);
   return result;
 }
 
