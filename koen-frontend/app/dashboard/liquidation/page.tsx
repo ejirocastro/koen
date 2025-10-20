@@ -1,6 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useAllLiquidatableLoans } from '@/lib/hooks';
+import { liquidateLoan } from '@/lib/contracts/p2p-marketplace';
+import { satoshisToSbtc } from '@/lib/utils/format-helpers';
+import toast from 'react-hot-toast';
 
 interface LiquidationLoan {
   loanId: string;
@@ -18,9 +22,48 @@ interface LiquidationLoan {
 export default function LiquidationPage() {
   const [sortBy, setSortBy] = useState<'healthFactor' | 'debtAmount' | 'timeToLiquidation'>('healthFactor');
   const [filterRisk, setFilterRisk] = useState<'all' | 'critical' | 'high' | 'medium'>('all');
+  const [liquidatingId, setLiquidatingId] = useState<number | null>(null);
 
-  // Mock data - Replace with actual smart contract data
-  const liquidationLoans: LiquidationLoan[] = [
+  // Fetch real liquidatable loans from blockchain
+  const { data: blockchainLoans, isLoading, refetch } = useAllLiquidatableLoans(20);
+
+  // Transform blockchain data to match UI format
+  const liquidationLoans: LiquidationLoan[] = blockchainLoans?.map(loan => {
+    const getRiskLevel = (hf: number): 'critical' | 'high' | 'medium' => {
+      if (hf < 105) return 'critical';
+      if (hf < 108) return 'high';
+      return 'medium';
+    };
+
+    const getTimeToLiquidation = (hf: number): string => {
+      if (hf < 105) return '< 1 hour';
+      if (hf < 107) return '2-4 hours';
+      if (hf < 110) return '4-8 hours';
+      if (hf < 115) return '12-24 hours';
+      if (hf < 118) return '1-2 days';
+      return '2-3 days';
+    };
+
+    const sbtcAmount = loan.collateral; // Already in sBTC format
+    const sbtcPrice = 96420; // TODO: Get from oracle
+    const collateralValue = sbtcAmount * sbtcPrice;
+
+    return {
+      loanId: `L-${String(loan.loanId).padStart(5, '0')}`,
+      borrower: `${loan.borrower.substring(0, 6)}...${loan.borrower.substring(loan.borrower.length - 4)}`,
+      collateralAmount: sbtcAmount,
+      collateralValue: collateralValue,
+      debtAmount: loan.currentDebt,
+      healthFactor: loan.healthFactor,
+      ltv: (loan.currentDebt / collateralValue) * 100,
+      liquidationPrice: (loan.currentDebt / sbtcAmount),
+      timeToLiquidation: getTimeToLiquidation(loan.healthFactor),
+      riskLevel: getRiskLevel(loan.healthFactor),
+    };
+  }) || [];
+
+  // Mock data for demo purposes (remove when blockchain has data)
+  const mockLoans: LiquidationLoan[] = liquidationLoans.length === 0 ? [
     {
       loanId: 'L-00042',
       borrower: 'SP2J6Z...4XYZ',
@@ -105,9 +148,12 @@ export default function LiquidationPage() {
       timeToLiquidation: '3-5 days',
       riskLevel: 'medium',
     },
-  ];
+  ] : [];
 
-  const filteredLoans = liquidationLoans.filter(loan => {
+  // Use blockchain loans if available, otherwise use mock data for demo
+  const displayLoans = liquidationLoans.length > 0 ? liquidationLoans : mockLoans;
+
+  const filteredLoans = displayLoans.filter(loan => {
     if (filterRisk === 'all') return true;
     return loan.riskLevel === filterRisk;
   });
@@ -132,6 +178,23 @@ export default function LiquidationPage() {
 
   const totalAtRisk = filteredLoans.reduce((sum, loan) => sum + loan.debtAmount, 0);
   const avgHealthFactor = filteredLoans.reduce((sum, loan) => sum + loan.healthFactor, 0) / filteredLoans.length;
+
+  // Handle liquidation
+  const handleLiquidate = async (loanId: string) => {
+    const numericId = parseInt(loanId.replace('L-', ''));
+    setLiquidatingId(numericId);
+    const toastId = toast.loading('Liquidating loan...');
+
+    try {
+      const result = await liquidateLoan(numericId);
+      toast.success(`Loan ${loanId} liquidated!`, { id: toastId });
+      setTimeout(() => refetch(), 2000);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to liquidate', { id: toastId });
+    } finally {
+      setLiquidatingId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0B0E11] text-white p-4">
@@ -219,10 +282,10 @@ export default function LiquidationPage() {
               onChange={(e) => setFilterRisk(e.target.value as any)}
               className="px-3 py-1.5 bg-[#2B3139] border border-[#2B3139] hover:border-[#848E9C] rounded text-sm text-white transition-colors focus:outline-none focus:border-emerald-500"
             >
-              <option value="all">All ({liquidationLoans.length})</option>
-              <option value="critical">Critical ({liquidationLoans.filter(l => l.riskLevel === 'critical').length})</option>
-              <option value="high">High ({liquidationLoans.filter(l => l.riskLevel === 'high').length})</option>
-              <option value="medium">Medium ({liquidationLoans.filter(l => l.riskLevel === 'medium').length})</option>
+              <option value="all">All ({displayLoans.length})</option>
+              <option value="critical">Critical ({displayLoans.filter(l => l.riskLevel === 'critical').length})</option>
+              <option value="high">High ({displayLoans.filter(l => l.riskLevel === 'high').length})</option>
+              <option value="medium">Medium ({displayLoans.filter(l => l.riskLevel === 'medium').length})</option>
             </select>
 
             <span className="text-sm text-[#848E9C]">Sort by:</span>
@@ -237,7 +300,10 @@ export default function LiquidationPage() {
             </select>
           </div>
 
-          <button className="px-4 py-1.5 bg-[#2B3139] hover:bg-[#343840] border border-[#2B3139] rounded text-sm text-white transition-colors">
+          <button
+            onClick={() => refetch()}
+            className="px-4 py-1.5 bg-[#2B3139] hover:bg-[#343840] border border-[#2B3139] rounded text-sm text-white transition-colors"
+          >
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -328,8 +394,12 @@ export default function LiquidationPage() {
 
                   {/* Action */}
                   <td className="px-4 py-3 text-center">
-                    <button className="px-3 py-1.5 bg-[#F6465D] hover:bg-[#F6465D]/80 text-white text-xs font-bold rounded transition-all opacity-0 group-hover:opacity-100">
-                      Liquidate
+                    <button
+                      onClick={() => handleLiquidate(loan.loanId)}
+                      disabled={liquidatingId === parseInt(loan.loanId.replace('L-', ''))}
+                      className="px-3 py-1.5 bg-[#F6465D] hover:bg-[#F6465D]/80 disabled:bg-[#848E9C] disabled:cursor-not-allowed text-white text-xs font-bold rounded transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      {liquidatingId === parseInt(loan.loanId.replace('L-', '')) ? 'Liquidating...' : 'Liquidate'}
                     </button>
                   </td>
                 </tr>

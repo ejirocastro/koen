@@ -144,3 +144,47 @@ export function useUserLoansWithHealth(address: string | null) {
     error: loansQuery.error || detailsQuery.error || atRiskQuery.error,
   };
 }
+
+/**
+ * Hook to fetch ALL liquidatable loans across the platform
+ * This queries all loans (up to maxLoans) and checks which are liquidatable
+ */
+export function useAllLiquidatableLoans(maxLoans: number = 50) {
+  const network = getNetwork();
+
+  return useQuery({
+    queryKey: ['liquidatable-loans', maxLoans],
+    queryFn: async () => {
+      const liquidatableLoans: (ActiveLoan & { healthFactor: number; currentDebt: number; isLiquidatable: boolean })[] = [];
+
+      // Query loans starting from ID 1 up to maxLoans
+      // In production, you'd get the actual next-loan-id from the contract
+      for (let loanId = 1; loanId <= maxLoans; loanId++) {
+        const loan = await getActiveLoan(loanId, network);
+
+        // Skip if loan doesn't exist or is not active
+        if (!loan || loan.status !== 'active') continue;
+
+        // Check if liquidatable
+        const isLiquidatable = await isLoanLiquidatable(loanId, network);
+
+        if (isLiquidatable) {
+          // Get health factor and current debt
+          const healthFactor = await getLoanHealthFactor(loanId, network);
+          const currentDebt = await getLoanCurrentDebt(loanId, network);
+
+          liquidatableLoans.push({
+            ...loan,
+            healthFactor: healthFactor || 0,
+            currentDebt: currentDebt || 0,
+            isLiquidatable: true,
+          });
+        }
+      }
+
+      return liquidatableLoans;
+    },
+    refetchInterval: 30000, // Refresh every 30 seconds
+    retry: 1,
+  });
+}

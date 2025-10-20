@@ -783,9 +783,11 @@ export async function cancelBorrowRequest(requestId: number): Promise<{ txId: st
  */
 export async function repayLoan(loanId: number): Promise<{ txId: string }> {
   const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
+  const network = getNetwork();
 
   return new Promise((resolve, reject) => {
     const options = {
+      network,
       contractAddress,
       contractName,
       functionName: 'repay-loan',
@@ -821,9 +823,11 @@ export async function repayLoan(loanId: number): Promise<{ txId: string }> {
  */
 export async function liquidateLoan(loanId: number): Promise<{ txId: string }> {
   const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
+  const network = getNetwork();
 
   return new Promise((resolve, reject) => {
     const options = {
+      network,
       contractAddress,
       contractName,
       functionName: 'liquidate-loan',
