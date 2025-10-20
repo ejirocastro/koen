@@ -9,6 +9,7 @@ import {
 import { openContractCall } from '@stacks/connect';
 import { StacksNetwork } from '@stacks/network';
 import { CONTRACTS, MARKETPLACE_CONSTANTS } from '../constants';
+import { getNetwork } from '../network';
 import {
   microKusdToKusd,
   kusdToMicroKusd,
@@ -688,11 +689,13 @@ export async function matchOfferToRequest(
   requestId: number
 ): Promise<{ txId: string }> {
   const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
+  const network = getNetwork();
 
   const functionArgs = [uintCV(offerId), uintCV(requestId)];
 
   return new Promise((resolve, reject) => {
     const options = {
+      network,
       contractAddress,
       contractName,
       functionName: 'match-offer-to-request',
@@ -716,9 +719,11 @@ export async function matchOfferToRequest(
  */
 export async function cancelLendingOffer(offerId: number): Promise<{ txId: string }> {
   const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
+  const network = getNetwork();
 
   return new Promise((resolve, reject) => {
     const options = {
+      network,
       contractAddress,
       contractName,
       functionName: 'cancel-lending-offer',
@@ -742,9 +747,11 @@ export async function cancelLendingOffer(offerId: number): Promise<{ txId: strin
  */
 export async function cancelBorrowRequest(requestId: number): Promise<{ txId: string }> {
   const [contractAddress, contractName] = CONTRACTS.P2P_MARKETPLACE.split('.');
+  const network = getNetwork();
 
   return new Promise((resolve, reject) => {
     const options = {
+      network,
       contractAddress,
       contractName,
       functionName: 'cancel-borrow-request',
