@@ -1,5 +1,4 @@
 import {
-  fetchCallReadOnlyFunction,
   cvToJSON,
   uintCV,
   principalCV,
@@ -9,6 +8,7 @@ import { openContractCall } from '@stacks/connect';
 import { StacksNetwork } from '@stacks/network';
 import { CONTRACTS } from '../constants';
 import { microKusdToKusd, kusdToMicroKusd } from '../utils/format-helpers';
+import { robustFetchReadOnly } from '../network/api-client';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -35,16 +35,13 @@ export async function getKusdBalance(
   try {
     const [contractAddress, contractName] = CONTRACTS.KUSD_TOKEN.split('.');
 
-    const result = await fetchCallReadOnlyFunction({
+    const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-balance',
-      functionArgs: [principalCV(address)],
-      network,
-      senderAddress: contractAddress,
-    });
-
-    const data = cvToJSON(result);
+      'get-balance',
+      [principalCV(address)],
+      network
+    );
 
     // Handle response wrapper - could be data.value.value or data.value
     let balance = data.value;
@@ -73,49 +70,40 @@ export async function getKusdMetadata(
     const [contractAddress, contractName] = CONTRACTS.KUSD_TOKEN.split('.');
 
     // Get name
-    const nameResult = await fetchCallReadOnlyFunction({
+    const nameData = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-name',
-      functionArgs: [],
-      network,
-      senderAddress: contractAddress,
-    });
+      'get-name',
+      [],
+      network
+    );
 
     // Get symbol
-    const symbolResult = await fetchCallReadOnlyFunction({
+    const symbolData = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-symbol',
-      functionArgs: [],
-      network,
-      senderAddress: contractAddress,
-    });
+      'get-symbol',
+      [],
+      network
+    );
 
     // Get decimals
-    const decimalsResult = await fetchCallReadOnlyFunction({
+    const decimalsData = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-decimals',
-      functionArgs: [],
-      network,
-      senderAddress: contractAddress,
-    });
+      'get-decimals',
+      [],
+      network
+    );
 
     // Get token URI
-    const uriResult = await fetchCallReadOnlyFunction({
+    const uriData = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-token-uri',
-      functionArgs: [],
-      network,
-      senderAddress: contractAddress,
-    });
-
-    const nameData = cvToJSON(nameResult);
-    const symbolData = cvToJSON(symbolResult);
-    const decimalsData = cvToJSON(decimalsResult);
-    const uriData = cvToJSON(uriResult);
+      'get-token-uri',
+      [],
+      network
+    );
 
     return {
       name: nameData.value?.value || 'Koen USD',
@@ -138,16 +126,13 @@ export async function getKusdTotalSupply(
   try {
     const [contractAddress, contractName] = CONTRACTS.KUSD_TOKEN.split('.');
 
-    const result = await fetchCallReadOnlyFunction({
+    const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-total-supply',
-      functionArgs: [],
-      network,
-      senderAddress: contractAddress,
-    });
-
-    const data = cvToJSON(result);
+      'get-total-supply',
+      [],
+      network
+    );
 
     // Handle response wrapper - could be data.value.value or data.value
     let supply = data.value;

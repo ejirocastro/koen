@@ -4,7 +4,6 @@ import {
   principalCV,
   PostConditionMode,
   ClarityValue,
-  fetchCallReadOnlyFunction,
 } from '@stacks/transactions';
 import { openContractCall } from '@stacks/connect';
 import { StacksNetwork } from '@stacks/network';

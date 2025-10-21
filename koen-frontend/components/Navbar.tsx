@@ -11,10 +11,18 @@ export default function Navbar() {
   const [connecting, setConnecting] = useState(false);
 
   // On mount, check if wallet is already connected
+  // This also catches the redirect back from authentication
   useEffect(() => {
     async function checkWallet() {
+      console.log('[Navbar] Checking wallet on mount/redirect...');
       const data = await walletService.getCurrentWalletData();
-      setWalletAddress(data?.address || null);
+      console.log('[Navbar] Wallet data from getCurrentWalletData:', data);
+      if (data?.address) {
+        console.log('✅ [Navbar] Wallet already connected:', data.address);
+        setWalletAddress(data.address);
+      } else {
+        console.log('[Navbar] No wallet connected yet');
+      }
     }
     checkWallet();
   }, []);
@@ -23,11 +31,31 @@ export default function Navbar() {
   const handleConnectWallet = async () => {
     setConnecting(true);
     try {
+      console.log('[Navbar] Starting wallet connection...');
       const info = await walletService.connectWallet();
-      setWalletAddress(info.address);
+      console.log('[Navbar] Wallet connection response:', info);
+
+      // If we got an address, show it
+      if (info.address) {
+        console.log('✅ [Navbar] Wallet connected immediately:', info.address);
+        setWalletAddress(info.address);
+        setConnecting(false);
+      } else {
+        // No address yet - this means a redirect is happening
+        // Keep the button in "connecting" state
+        console.log('🔄 [Navbar] Wallet authentication in progress (popup/redirect)...');
+        // The page will reload after redirect, or the popup will complete
+        // Don't set connecting to false - it will reset on page reload or popup completion
+      }
     } catch (e) {
-      // Optionally show error to user
-    } finally {
+      // Handle errors
+      console.error('[Navbar] Wallet connection failed:', e);
+
+      // Only show error alert if it's not a user cancellation
+      if (e instanceof Error && !e.message.includes('cancelled')) {
+        alert(`Failed to connect wallet: ${e.message}`);
+      }
+
       setConnecting(false);
     }
   };

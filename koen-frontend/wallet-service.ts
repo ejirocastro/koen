@@ -98,54 +98,98 @@ class WalletService {
    * This method explicitly connects the wallet and marks it as connected through our app
    */
   async connectWallet(): Promise<WalletInfo> {
-    return new Promise((resolve, reject) => {
-      try {
-        console.log("Starting explicit wallet connection...");
+    try {
+      console.log("🔄 [WalletService] Starting wallet connection...");
 
+      // Check if already signed in
+      if (userSession.isUserSignedIn()) {
+        console.log("✅ [WalletService] User already signed in, loading existing session");
+        const userData = userSession.loadUserData();
+        const stxAddress = userData?.profile?.stxAddress?.testnet ||
+                          userData?.profile?.stxAddress?.mainnet;
+
+        if (stxAddress) {
+          this.markAsExplicitlyConnected();
+          return {
+            address: stxAddress,
+            publicKey: userData?.profile?.publicKey || '',
+            profile: userData?.profile || userData,
+            isConnected: true,
+          };
+        }
+      }
+
+      // Store a flag to indicate we're initiating a wallet connection
+      // This will be checked after redirect
+      localStorage.setItem('koen_wallet_connection_initiated', 'true');
+      console.log("🔄 [WalletService] Set connection initiated flag");
+
+      // Use authenticate - it will open wallet popup or redirect
+      console.log("🔄 [WalletService] Calling authenticate...");
+
+      // Return a Promise that waits for authentication to complete
+      return new Promise((resolve, reject) => {
         authenticate({
           appDetails: {
             name: 'Kōen Protocol',
             icon: typeof window !== 'undefined' ? window.location.origin + '/favicon.ico' : '',
           },
           redirectTo: '/',
-          onFinish: (payload: any) => {
-            console.log("Wallet connection finished", payload);
+          onFinish: () => {
+            console.log("✅ [WalletService] authenticate onFinish called");
+            // Mark as explicitly connected
+            this.markAsExplicitlyConnected();
 
-            // Get the user data from the session
-            const userData = userSession.loadUserData();
-            console.log("User Data:", userData);
+            // Try to get wallet data after authentication
+            if (userSession.isUserSignedIn()) {
+              const userData = userSession.loadUserData();
+              const stxAddress = userData?.profile?.stxAddress?.testnet ||
+                                userData?.profile?.stxAddress?.mainnet;
 
-            // Get STX address based on network
-            const stxAddress = userData?.profile?.stxAddress?.testnet ||
-                              userData?.profile?.stxAddress?.mainnet;
-
-            console.log("Extracted STX address:", stxAddress);
-
-            if (stxAddress) {
-              // Mark as explicitly connected ONLY after successful connection
-              this.markAsExplicitlyConnected();
-
-              resolve({
-                address: stxAddress,
-                publicKey: userData?.profile?.publicKey || '',
-                profile: userData?.profile || userData,
-                isConnected: true,
-              });
+              if (stxAddress) {
+                resolve({
+                  address: stxAddress,
+                  publicKey: userData?.profile?.publicKey || '',
+                  profile: userData?.profile || userData,
+                  isConnected: true,
+                });
+              } else {
+                // If we have a session but no address, the redirect flow will handle it
+                // Just resolve with empty info - ConnectProvider will handle the rest
+                resolve({
+                  address: '',
+                  publicKey: '',
+                  profile: {},
+                  isConnected: false,
+                });
+              }
             } else {
-              reject(new Error("Failed to retrieve wallet address"));
+              // Redirect flow - ConnectProvider will handle completion after redirect
+              resolve({
+                address: '',
+                publicKey: '',
+                profile: {},
+                isConnected: false,
+              });
             }
           },
           onCancel: () => {
-            console.log("Wallet connection cancelled");
-            reject(new Error("User cancelled wallet connection"));
+            console.log("❌ [WalletService] User cancelled wallet connection");
+            localStorage.removeItem('koen_wallet_connection_initiated');
+            reject(new Error('User cancelled wallet connection'));
           },
           userSession,
         });
-      } catch (error) {
-        console.error('Error connecting wallet:', error);
-        reject(new Error('Failed to connect wallet'));
+      });
+
+    } catch (error) {
+      if (error instanceof Error && error.message === 'REDIRECT_IN_PROGRESS') {
+        // This is expected - the redirect flow is starting
+        throw error;
       }
-    });
+      console.error('❌ [WalletService] Error connecting wallet:', error);
+      throw new Error('Failed to connect wallet');
+    }
   }
 
   /**

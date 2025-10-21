@@ -8,12 +8,13 @@
  * - Desktop: Collapsible sidebar with toggle button
  * - Mobile: Full-width overlay sidebar with backdrop
  * - Active route highlighting
- * - Badge support for notification counts
+ * - Badge support for notification counts (dynamic data)
  */
 'use client';
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useWallet, useUserLoansWithHealth, useAllLiquidatableLoans } from '@/lib/hooks';
 
 /**
  * Props for the Sidebar component
@@ -37,6 +38,18 @@ interface NavItem {
 export default function Sidebar({ collapsed, onToggle, onClose }: SidebarProps) {
   // Get current pathname to highlight active navigation item
   const pathname = usePathname();
+
+  // Get wallet address for fetching user-specific data
+  const { address } = useWallet();
+
+  // Fetch user's loans to count active loans
+  const { loans } = useUserLoansWithHealth(address);
+  const activeLoanCount = loans?.filter(loan => loan.status === 'active').length || 0;
+
+  // Fetch liquidatable loans to count loans at risk across the platform
+  // Reduced from 50 to 20 to minimize API calls
+  const { data: liquidatableLoans } = useAllLiquidatableLoans(20);
+  const liquidatableCount = liquidatableLoans?.length || 0;
 
   const navItems: NavItem[] = [
     {
@@ -65,7 +78,7 @@ export default function Sidebar({ collapsed, onToggle, onClose }: SidebarProps) 
         </svg>
       ),
       href: '/dashboard/loans',
-      badge: 4,
+      badge: activeLoanCount > 0 ? activeLoanCount : undefined,
     },
     {
       label: 'Create Offer',
@@ -84,7 +97,7 @@ export default function Sidebar({ collapsed, onToggle, onClose }: SidebarProps) 
         </svg>
       ),
       href: '/dashboard/liquidation',
-      badge: 2,
+      badge: liquidatableCount > 0 ? liquidatableCount : undefined,
     },
   ];
 

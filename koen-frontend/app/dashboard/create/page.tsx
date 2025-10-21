@@ -21,10 +21,10 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useWallet, useTokenBalances, useMarketplaceStats, useOracleFreshness } from '@/lib/hooks';
-import { microKusdToKusd, satoshisToSbtc, daysToBlocks, percentageToBps, sbtcToSatoshis, kusdToMicroKusd } from '@/lib/utils/format-helpers';
+import { useWallet, useTokenBalances, useMarketplaceStats, useOracleFreshness, useUserSettings } from '@/lib/hooks';
+import { microKusdToKusd, satoshisToSbtc, daysToBlocks, blocksToDays, percentageToBps, sbtcToSatoshis, kusdToMicroKusd } from '@/lib/utils/format-helpers';
 import { createLendingOffer, createBorrowRequest } from '@/lib/contracts/p2p-marketplace';
 import { requestKusdFaucet } from '@/lib/contracts/kusd-token';
 import { updateSbtcPrice } from '@/lib/contracts/oracle';
@@ -33,6 +33,9 @@ import toast from 'react-hot-toast';
 export default function CreatePage() {
   const router = useRouter();
 
+  // Get user settings for form defaults
+  const { settings } = useUserSettings();
+
   // UI state management
   const [activeTab, setActiveTab] = useState<'offer' | 'request'>('offer');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,15 +43,25 @@ export default function CreatePage() {
   const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   // Form data state - stores all user input values
+  // Initialize with user's preferred defaults from settings
   const [formData, setFormData] = useState({
     amount: '',
     apr: '',
-    duration: '90',
+    duration: blocksToDays(settings.trading.defaultDuration).toString(),
     collateral: 'sBTC',
-    collateralRatio: '150',
+    collateralRatio: (settings.trading.defaultCollateralRatio / 100).toString(),
     minReputation: '0',
     collateralAmount: '',
   });
+
+  // Update form defaults when settings change
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      duration: blocksToDays(settings.trading.defaultDuration).toString(),
+      collateralRatio: (settings.trading.defaultCollateralRatio / 100).toString(),
+    }));
+  }, [settings.trading.defaultDuration, settings.trading.defaultCollateralRatio]);
 
   // Get wallet connection
   const { address, isConnected, connectWallet } = useWallet();

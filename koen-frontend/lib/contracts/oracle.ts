@@ -1,5 +1,4 @@
 import {
-  fetchCallReadOnlyFunction,
   cvToJSON,
   uintCV,
   PostConditionMode,
@@ -8,6 +7,7 @@ import { openContractCall } from '@stacks/connect';
 import { StacksNetwork } from '@stacks/network';
 import { CONTRACTS, MARKETPLACE_CONSTANTS } from '../constants';
 import { getNetwork } from '../network';
+import { robustFetchReadOnly } from '../network/api-client';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -33,16 +33,13 @@ export async function getSbtcPrice(
   try {
     const [contractAddress, contractName] = CONTRACTS.ORACLE.split('.');
 
-    const result = await fetchCallReadOnlyFunction({
+    const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-sbtc-price',
-      functionArgs: [],
-      network,
-      senderAddress: contractAddress,
-    });
-
-    const data = cvToJSON(result);
+      'get-sbtc-price',
+      [],
+      network
+    );
 
     // Handle response wrapper - could be data.value.value or data.value
     let price = data.value;
@@ -74,49 +71,40 @@ export async function getOracleData(
     const [contractAddress, contractName] = CONTRACTS.ORACLE.split('.');
 
     // Get price
-    const priceResult = await fetchCallReadOnlyFunction({
+    const priceData = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-sbtc-price',
-      functionArgs: [],
-      network,
-      senderAddress: contractAddress,
-    });
+      'get-sbtc-price',
+      [],
+      network
+    );
 
     // Get last update block
-    const lastUpdateResult = await fetchCallReadOnlyFunction({
+    const lastUpdateData = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-last-update-block',
-      functionArgs: [],
-      network,
-      senderAddress: contractAddress,
-    });
+      'get-last-update-block',
+      [],
+      network
+    );
 
     // Get decimals
-    const decimalsResult = await fetchCallReadOnlyFunction({
+    const decimalsData = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-decimals',
-      functionArgs: [],
-      network,
-      senderAddress: contractAddress,
-    });
+      'get-decimals',
+      [],
+      network
+    );
 
     // Check if price is fresh
-    const isFreshResult = await fetchCallReadOnlyFunction({
+    const isFreshData = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'is-price-fresh',
-      functionArgs: [],
-      network,
-      senderAddress: contractAddress,
-    });
-
-    const priceData = cvToJSON(priceResult);
-    const lastUpdateData = cvToJSON(lastUpdateResult);
-    const decimalsData = cvToJSON(decimalsResult);
-    const isFreshData = cvToJSON(isFreshResult);
+      'is-price-fresh',
+      [],
+      network
+    );
 
     // Handle response wrapper for price
     let priceValue = priceData.value;
@@ -155,16 +143,13 @@ export async function getSbtcPriceAtBlock(
   try {
     const [contractAddress, contractName] = CONTRACTS.ORACLE.split('.');
 
-    const result = await fetchCallReadOnlyFunction({
+    const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-price-at-block',
-      functionArgs: [uintCV(blockHeight)],
-      network,
-      senderAddress: contractAddress,
-    });
-
-    const data = cvToJSON(result);
+      'get-price-at-block',
+      [uintCV(blockHeight)],
+      network
+    );
 
     // Handle response wrapper - could be data.value.value or data.value
     let price = data.value;
@@ -196,16 +181,13 @@ export async function getSbtcValueInUsd(
     // Convert sBTC to satoshis (8 decimals)
     const satoshis = Math.floor(sbtcAmount * 100_000_000);
 
-    const result = await fetchCallReadOnlyFunction({
+    const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-sbtc-value',
-      functionArgs: [uintCV(satoshis)],
-      network,
-      senderAddress: contractAddress,
-    });
-
-    const data = cvToJSON(result);
+      'get-sbtc-value',
+      [uintCV(satoshis)],
+      network
+    );
 
     // Handle response wrapper - could be data.value.value or data.value
     let value = data.value;
@@ -238,16 +220,13 @@ export async function getSbtcAmountForUsd(
     // Convert USD to 8 decimal format
     const usdWith8Decimals = Math.floor(usdValue * 100_000_000);
 
-    const result = await fetchCallReadOnlyFunction({
+    const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-sbtc-amount',
-      functionArgs: [uintCV(usdWith8Decimals)],
-      network,
-      senderAddress: contractAddress,
-    });
-
-    const data = cvToJSON(result);
+      'get-sbtc-amount',
+      [uintCV(usdWith8Decimals)],
+      network
+    );
 
     // Handle response wrapper - could be data.value.value or data.value
     let amount = data.value;
@@ -276,16 +255,14 @@ export async function isPriceFresh(
   try {
     const [contractAddress, contractName] = CONTRACTS.ORACLE.split('.');
 
-    const result = await fetchCallReadOnlyFunction({
+    const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'is-price-fresh',
-      functionArgs: [],
-      network,
-      senderAddress: contractAddress,
-    });
+      'is-price-fresh',
+      [],
+      network
+    );
 
-    const data = cvToJSON(result);
     return data.value === true;
   } catch (error) {
     console.error('Error checking if price is fresh:', error);
@@ -324,16 +301,13 @@ export async function getLastUpdateBlock(
   try {
     const [contractAddress, contractName] = CONTRACTS.ORACLE.split('.');
 
-    const result = await fetchCallReadOnlyFunction({
+    const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-last-update-block',
-      functionArgs: [],
-      network,
-      senderAddress: contractAddress,
-    });
-
-    const data = cvToJSON(result);
+      'get-last-update-block',
+      [],
+      network
+    );
 
     // Handle response wrapper - could be data.value.value or data.value
     let block = data.value;

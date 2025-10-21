@@ -79,10 +79,10 @@ export function useActiveOffers(maxCount: number = 50) {
 
       return offers;
     },
-    // Refetch every 15 seconds for better UX (offers appear faster)
-    refetchInterval: 15000,
-    retry: 1, // Only retry once
-    staleTime: 10000, // Consider data fresh for 10 seconds
+    // Refetch every 2 minutes to reduce API load
+    refetchInterval: 120000,
+    retry: 0, // No retries to avoid rate limiting
+    staleTime: 120000, // Consider data fresh for 2 minutes
   });
 }
 
@@ -146,10 +146,10 @@ export function useActiveRequests(maxCount: number = 50) {
 
       return requests;
     },
-    // Refetch every 15 seconds for better UX (requests appear faster)
-    refetchInterval: 15000,
-    retry: 1, // Only retry once
-    staleTime: 10000, // Consider data fresh for 10 seconds
+    // Refetch every 2 minutes to reduce API load
+    refetchInterval: 120000,
+    retry: 0, // No retries to avoid rate limiting
+    staleTime: 120000, // Consider data fresh for 2 minutes
   });
 }
 
@@ -209,8 +209,7 @@ export function useMarketplaceStats() {
       }
     },
     refetchInterval: 120000, // Refetch every 2 minutes
-    retry: 2, // Retry twice before giving up
-    retryDelay: 2000, // Wait 2s between retries
-    staleTime: 60000, // Consider data fresh for 1 minute
+    retry: 0, // No retries to avoid rate limiting
+    staleTime: 120000, // Consider data fresh for 2 minutes
   });
 }

@@ -9,6 +9,7 @@ import {
   bpsToPercentage,
   blocksToDays,
 } from '@/lib/utils/format-helpers';
+// Health utilities no longer needed - using simple color coding instead
 import { repayLoan } from '@/lib/contracts/p2p-marketplace';
 import { exportLoansToCSV } from '@/lib/utils/export-helpers';
 import toast from 'react-hot-toast';
@@ -377,7 +378,7 @@ export default function MyLoansPage() {
                           <span className={`px-2 py-1 text-xs rounded uppercase ${
                             loan.status === 'active'
                               ? loan.isAtRisk
-                                ? 'bg-red-500/10 text-red-500'
+                                ? 'bg-yellow-500/10 text-yellow-500'
                                 : 'bg-orange-500/10 text-orange-500'
                               : 'bg-[#2B3139] text-[#848E9C]'
                           }`}>

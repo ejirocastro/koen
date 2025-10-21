@@ -24,7 +24,8 @@ export function useUserLoans(address: string | null) {
       return await getUserActiveLoans(address, network);
     },
     enabled: !!address, // Only fetch if address is available
-    refetchInterval: 30000, // Refetch every 30 seconds
+    staleTime: 120000, // Consider data fresh for 2 minutes
+    refetchInterval: 120000, // Refetch every 2 minutes
   });
 }
 
@@ -47,7 +48,8 @@ export function useLoanDetails(loanIds: number[]) {
       return results.filter((loan): loan is ActiveLoan => loan !== null);
     },
     enabled: loanIds && loanIds.length > 0,
-    refetchInterval: 30000,
+    staleTime: 120000, // Consider data fresh for 2 minutes
+    refetchInterval: 120000, // Refetch every 2 minutes
   });
 }
 
@@ -61,7 +63,8 @@ export function useLoan(loanId: number) {
     queryKey: ['loan', loanId],
     queryFn: () => getActiveLoan(loanId, network),
     enabled: loanId > 0,
-    refetchInterval: 30000,
+    staleTime: 120000, // Consider data fresh for 2 minutes
+    refetchInterval: 120000, // Refetch every 2 minutes
   });
 }
 
@@ -87,7 +90,8 @@ export function useLoanHealth(loanId: number) {
       };
     },
     enabled: loanId > 0,
-    refetchInterval: 10000, // Refetch every 10 seconds (critical data)
+    staleTime: 60000, // Consider data fresh for 1 minute
+    refetchInterval: 60000, // Refetch every 1 minute
   });
 }
 
@@ -118,7 +122,8 @@ export function useAtRiskLoans(address: string | null) {
         .map((check) => check.loanId);
     },
     enabled: !!address && !!loanIds && loanIds.length > 0,
-    refetchInterval: 10000, // Check frequently for at-risk loans
+    staleTime: 60000, // Consider data fresh for 1 minute
+    refetchInterval: 60000, // Check every 1 minute (reduced from 10s)
   });
 }
 
@@ -184,7 +189,8 @@ export function useAllLiquidatableLoans(maxLoans: number = 50) {
 
       return liquidatableLoans;
     },
-    refetchInterval: 30000, // Refresh every 30 seconds
-    retry: 1,
+    staleTime: 300000, // Consider data fresh for 5 minutes
+    refetchInterval: 300000, // Refresh every 5 minutes (reduced from 30s)
+    retry: 0, // No retries to avoid rate limiting
   });
 }

@@ -57,9 +57,10 @@ export function useOracleFreshness() {
         };
       }
     },
-    // Refetch every 30 seconds
-    refetchInterval: 30000,
-    retry: 2,
+    // Oracle price doesn't change often, check every 5 minutes
+    staleTime: 300000, // Consider data fresh for 5 minutes
+    refetchInterval: 300000, // Refetch every 5 minutes
+    retry: 0, // No retries to avoid rate limiting
   });
 }
 
@@ -75,6 +76,8 @@ export function useOraclePrice() {
       const oracleData = await getOracleData(network);
       return oracleData?.price || 0;
     },
-    refetchInterval: 30000,
+    staleTime: 300000, // Consider data fresh for 5 minutes
+    refetchInterval: 300000, // Refetch every 5 minutes
+    retry: 0, // No retries to avoid rate limiting
   });
 }

@@ -3,7 +3,6 @@ import {
   uintCV,
   principalCV,
   PostConditionMode,
-  fetchCallReadOnlyFunction,
 } from '@stacks/transactions';
 import { openContractCall } from '@stacks/connect';
 import { StacksNetwork } from '@stacks/network';
@@ -96,16 +95,13 @@ export async function getReputationScore(
   try {
     const [contractAddress, contractName] = CONTRACTS.REPUTATION_SBT.split('.');
 
-    const result = await fetchCallReadOnlyFunction({
+    const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-score',
-      functionArgs: [principalCV(address)],
-      network,
-      senderAddress: contractAddress,
-    });
-
-    const data = cvToJSON(result);
+      'get-score',
+      [principalCV(address)],
+      network
+    );
 
     // Handle response wrapper - could be data.value.value or data.value
     let score = data.value;
@@ -134,16 +130,13 @@ export async function getReputationTier(
   try {
     const [contractAddress, contractName] = CONTRACTS.REPUTATION_SBT.split('.');
 
-    const result = await fetchCallReadOnlyFunction({
+    const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-tier',
-      functionArgs: [principalCV(address)],
-      network,
-      senderAddress: contractAddress,
-    });
-
-    const data = cvToJSON(result);
+      'get-tier',
+      [principalCV(address)],
+      network
+    );
 
     // Handle response wrapper - could be data.value.value or data.value
     let tier = data.value;
@@ -177,16 +170,13 @@ export async function getReputationMultiplier(
   try {
     const [contractAddress, contractName] = CONTRACTS.REPUTATION_SBT.split('.');
 
-    const result = await fetchCallReadOnlyFunction({
+    const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'get-multiplier',
-      functionArgs: [principalCV(address)],
-      network,
-      senderAddress: contractAddress,
-    });
-
-    const data = cvToJSON(result);
+      'get-multiplier',
+      [principalCV(address)],
+      network
+    );
 
     // Handle response wrapper - could be data.value.value or data.value
     let multiplier = data.value;
@@ -215,16 +205,14 @@ export async function hasReputationSbt(
   try {
     const [contractAddress, contractName] = CONTRACTS.REPUTATION_SBT.split('.');
 
-    const result = await fetchCallReadOnlyFunction({
+    const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
-      functionName: 'has-sbt',
-      functionArgs: [principalCV(address)],
-      network,
-      senderAddress: contractAddress,
-    });
+      'has-sbt',
+      [principalCV(address)],
+      network
+    );
 
-    const data = cvToJSON(result);
     return data.value === true;
   } catch (error) {
     console.error('Error checking reputation SBT:', error);

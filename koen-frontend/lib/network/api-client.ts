@@ -35,9 +35,9 @@ interface RetryConfig {
 }
 
 const DEFAULT_RETRY_CONFIG: RetryConfig = {
-  maxRetries: 1,      // REDUCED: Only 1 retry to avoid 429 rate limits
-  initialDelay: 2000, // Longer delay between retries
-  maxDelay: 5000,     // Lower max to avoid long waits
+  maxRetries: 0,      // NO retries to avoid 429 rate limits
+  initialDelay: 3000, // Longer delay between retries
+  maxDelay: 10000,    // Longer max to avoid hammering API
   backoffMultiplier: 2,
 };
 

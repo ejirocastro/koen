@@ -23,9 +23,9 @@ export function useKusdBalance(address: string | null) {
       }
     },
     enabled: !!address,
-    refetchInterval: 30000, // Refetch every 30 seconds
-    retry: 2,
-    retryDelay: 1000,
+    staleTime: 120000, // Consider data fresh for 2 minutes
+    refetchInterval: 120000, // Refetch every 2 minutes
+    retry: 0, // No retries to avoid rate limiting
   });
 }
 
@@ -47,9 +47,9 @@ export function useSbtcBalance(address: string | null) {
       }
     },
     enabled: !!address,
-    refetchInterval: 30000,
-    retry: 2,
-    retryDelay: 1000,
+    staleTime: 120000, // Consider data fresh for 2 minutes
+    refetchInterval: 120000, // Refetch every 2 minutes
+    retry: 0, // No retries to avoid rate limiting
   });
 }
 
