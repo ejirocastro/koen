@@ -14,7 +14,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useWallet, useUserLoansWithHealth, useAllLiquidatableLoans } from '@/lib/hooks';
+import { useWallet, useUserLoansWithHealth, useReputationWithProgress, useTokenBalances } from '@/lib/hooks';
 
 /**
  * Props for the Sidebar component
@@ -47,9 +47,34 @@ export default function Sidebar({ collapsed, onToggle, onClose }: SidebarProps) 
   const activeLoanCount = loans?.filter(loan => loan.status === 'active').length || 0;
 
   // Fetch liquidatable loans to count loans at risk across the platform
-  // Reduced from 50 to 20 to minimize API calls
-  const { data: liquidatableLoans } = useAllLiquidatableLoans(20);
-  const liquidatableCount = liquidatableLoans?.length || 0;
+  // DISABLED temporarily to prevent API rate limiting - use static count for now
+  // const { data: liquidatableLoans } = useAllLiquidatableLoans(20);
+  const liquidatableCount = 0; // Temporarily disabled to reduce API calls
+
+  // Fetch reputation data - only when sidebar is expanded to reduce API calls
+  const { data: reputation, nextTier } = useReputationWithProgress(!collapsed ? address : null);
+  const reputationTier = reputation?.tier || 'bronze';
+
+  // Fetch token balances - only when sidebar is expanded to reduce API calls
+  const { kusd, sbtc } = useTokenBalances(!collapsed ? address : null);
+
+  // Calculate total balance (rough estimate with sBTC price)
+  // NOTE: kusd and sbtc from useTokenBalances are ALREADY converted (not micro/satoshis)
+  const sbtcPrice = 96420; // Approximate sBTC price
+  const totalBalance = kusd + (sbtc * sbtcPrice);
+
+  // Calculate locked balance (collateral in active borrower loans)
+  const lockedBalance = loans?.filter(loan => loan.borrower === address && loan.status === 'active')
+    .reduce((sum, loan) => sum + loan.collateral, 0) || 0;
+  const lockedValueUSD = (lockedBalance / 100000000) * 96420; // Convert satoshis to sBTC then to USD
+
+  // Available = total - locked
+  const availableBalance = Math.max(0, totalBalance - lockedValueUSD);
+
+  // Calculate APR discount based on tier
+  const baseApr = 6.0; // Base APR percentage
+  const tierDiscount = reputationTier === 'gold' ? 0.20 : reputationTier === 'silver' ? 0.10 : 0;
+  const effectiveApr = baseApr * (1 - tierDiscount);
 
   const navItems: NavItem[] = [
     {
@@ -161,33 +186,55 @@ export default function Sidebar({ collapsed, onToggle, onClose }: SidebarProps) 
             <div className="space-y-2 mb-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[#848E9C]">Total Assets</span>
-                <span className="text-white font-semibold tabular-nums">$15,750.00</span>
+                <span className="text-white font-semibold tabular-nums">${totalBalance.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[#848E9C]">Available</span>
-                <span className="text-white font-semibold tabular-nums">$10,500.00</span>
+                <span className="text-white font-semibold tabular-nums">${availableBalance.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[#848E9C]">Locked</span>
-                <span className="text-white font-semibold tabular-nums">$5,250.00</span>
+                <span className="text-white font-semibold tabular-nums">${lockedValueUSD.toFixed(2)}</span>
               </div>
             </div>
 
             {/* Reputation */}
-            <div className="p-2.5 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded">
+            <div className={`p-2.5 bg-gradient-to-r rounded border ${
+              reputationTier === 'gold'
+                ? 'from-yellow-500/10 to-orange-500/10 border-yellow-500/30'
+                : reputationTier === 'silver'
+                  ? 'from-gray-500/10 to-gray-600/10 border-gray-500/30'
+                  : 'from-orange-800/10 to-orange-900/10 border-orange-700/30'
+            }`}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-yellow-500 font-semibold">Gold Tier</span>
+                <span className={`text-xs font-semibold ${
+                  reputationTier === 'gold' ? 'text-yellow-500' :
+                  reputationTier === 'silver' ? 'text-gray-400' :
+                  'text-orange-700'
+                }`}>
+                  {reputationTier.charAt(0).toUpperCase() + reputationTier.slice(1)} Tier
+                </span>
                 <span className="text-xs text-[#848E9C]">APR</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
-                  <div className="w-1 h-1 bg-yellow-500 rounded-full"></div>
-                  <div className="w-1 h-1 bg-yellow-500 rounded-full"></div>
-                  <div className="w-1 h-1 bg-yellow-500 rounded-full"></div>
-                  <div className="w-1 h-1 bg-[#2B3139] rounded-full"></div>
-                  <div className="w-1 h-1 bg-[#2B3139] rounded-full"></div>
+                  {[0, 1, 2, 3, 4].map((index) => {
+                    const progress = nextTier?.progress || 0;
+                    const filled = (progress / 100) * 5 > index;
+                    const dotColor = reputationTier === 'gold' ? 'bg-yellow-500' :
+                                    reputationTier === 'silver' ? 'bg-gray-400' :
+                                    'bg-orange-700';
+                    return (
+                      <div
+                        key={index}
+                        className={`w-1 h-1 rounded-full ${filled ? dotColor : 'bg-[#2B3139]'}`}
+                      ></div>
+                    );
+                  })}
                 </div>
-                <span className="text-sm text-emerald-500 font-semibold tabular-nums">4.9%</span>
+                <span className="text-sm text-emerald-500 font-semibold tabular-nums">
+                  {effectiveApr.toFixed(1)}%
+                </span>
               </div>
             </div>
           </div>

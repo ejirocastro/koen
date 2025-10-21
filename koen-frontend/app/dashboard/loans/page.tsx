@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useWallet, useUserLoansWithHealth, useTokenBalances } from '@/lib/hooks';
+import { useWallet, useUserLoansWithHealth, useTokenBalances, useOraclePrice } from '@/lib/hooks';
 import {
   microKusdToKusd,
   satoshisToSbtc,
@@ -12,11 +12,31 @@ import {
 // Health utilities no longer needed - using simple color coding instead
 import { repayLoan } from '@/lib/contracts/p2p-marketplace';
 import { exportLoansToCSV } from '@/lib/utils/export-helpers';
+import LoanDetailModal from '@/components/LoanDetailModal';
 import toast from 'react-hot-toast';
+
+interface Loan {
+  loanId: number;
+  offerId: number;
+  requestId: number;
+  lender: string;
+  borrower: string;
+  amount: number;
+  apr: number;
+  duration: number;
+  startBlock: number;
+  endBlock: number;
+  collateral: number;
+  collateralRatio: number;
+  status: string;
+  repaidAmount: number;
+  isAtRisk?: boolean;
+}
 
 export default function MyLoansPage() {
   const [activeTab, setActiveTab] = useState<'lender' | 'borrower'>('lender');
   const [repayingLoanId, setRepayingLoanId] = useState<number | null>(null);
+  const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const queryClient = useQueryClient();
 
   // Get wallet connection
@@ -28,6 +48,10 @@ export default function MyLoansPage() {
   // Fetch token balances
   const { kusd, sbtc } = useTokenBalances(address);
 
+  // Get oracle price for health calculations
+  const { data: oraclePrice } = useOraclePrice();
+  const sbtcPrice = oraclePrice || 96420; // Default to $96,420
+
   // Separate loans by role
   const lenderLoans = loans?.filter(loan => loan.lender === address) || [];
   const borrowerLoans = loans?.filter(loan => loan.borrower === address) || [];
@@ -36,8 +60,33 @@ export default function MyLoansPage() {
   const totalLent = lenderLoans.reduce((sum, loan) => sum + loan.amount, 0);
   const totalBorrowed = borrowerLoans.reduce((sum, loan) => sum + loan.amount, 0);
 
-  // Calculate interest earned (simplified - would need actual accrued interest)
-  const interestEarned = 0; // TODO: Calculate from loan history
+  // Calculate interest earned from lender loans
+  // For active loans: calculate accrued interest based on time elapsed
+  // For repaid/completed loans: use the repaid amount - principal
+  const interestEarned = lenderLoans.reduce((sum, loan) => {
+    if (loan.status === 'repaid' && loan.repaidAmount > loan.amount) {
+      // For repaid loans, interest = repaid amount - principal
+      return sum + (loan.repaidAmount - loan.amount);
+    } else if (loan.status === 'active') {
+      // For active loans, estimate accrued interest
+      // Using loan duration as proxy for time elapsed (simplified)
+      const totalInterest = (loan.amount * (loan.apr / 100) * blocksToDays(loan.duration)) / 365;
+
+      // If loan has partial payments, include them
+      if (loan.repaidAmount > 0) {
+        // Interest earned = what's been paid beyond principal
+        const principalPaid = Math.min(loan.repaidAmount, loan.amount);
+        const interestPaid = Math.max(0, loan.repaidAmount - principalPaid);
+        return sum + interestPaid;
+      }
+
+      // For active loans with no payments yet, estimate based on time
+      // Assume we're halfway through the loan duration (conservative estimate)
+      const estimatedAccrued = totalInterest * 0.5;
+      return sum + estimatedAccrued;
+    }
+    return sum;
+  }, 0);
 
   // Calculate average health factor
   const avgHealth = loans && loans.length > 0
@@ -142,7 +191,7 @@ export default function MyLoansPage() {
       </div>
 
       {/* Portfolio Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <div className="bg-[#1E2329] border border-[#2B3139] rounded-lg p-4 hover:border-emerald-500/30 transition-colors">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-[#848E9C]">Total Lent</span>
@@ -154,6 +203,19 @@ export default function MyLoansPage() {
             ${microKusdToKusd(totalLent).toLocaleString()}
           </div>
           <div className="text-xs text-[#0ECB81]">{lenderLoans.length} active loans</div>
+        </div>
+
+        <div className="bg-[#1E2329] border border-[#2B3139] rounded-lg p-4 hover:border-accent/30 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-[#848E9C]">Interest Earned</span>
+            <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            </svg>
+          </div>
+          <div className="text-2xl font-bold text-accent tabular-nums mb-1">
+            ${interestEarned.toFixed(2)}
+          </div>
+          <div className="text-xs text-accent/70">From {lenderLoans.length} loan{lenderLoans.length !== 1 ? 's' : ''}</div>
         </div>
 
         <div className="bg-[#1E2329] border border-[#2B3139] rounded-lg p-4 hover:border-orange-500/30 transition-colors">
@@ -177,7 +239,7 @@ export default function MyLoansPage() {
             </svg>
           </div>
           <div className="text-2xl font-bold text-[#0ECB81] tabular-nums mb-1">
-            ${microKusdToKusd(kusd).toLocaleString()}
+            ${kusd.toLocaleString()}
           </div>
           <div className="text-xs text-[#848E9C]">Available</div>
         </div>
@@ -190,7 +252,7 @@ export default function MyLoansPage() {
             </svg>
           </div>
           <div className="text-2xl font-bold text-[#0ECB81] tabular-nums mb-1">
-            {satoshisToSbtc(sbtc).toFixed(4)}
+            {sbtc.toFixed(4)}
           </div>
           <div className="text-xs text-[#0ECB81]">sBTC</div>
         </div>
@@ -311,7 +373,10 @@ export default function MyLoansPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4 text-center">
-                          <button className="px-3 py-1.5 bg-[#2B3139] hover:bg-[#343840] text-white text-xs font-semibold rounded transition-colors">
+                          <button
+                            onClick={() => setSelectedLoan(loan as Loan)}
+                            className="px-3 py-1.5 bg-[#2B3139] hover:bg-[#343840] text-white text-xs font-semibold rounded transition-colors"
+                          >
                             View
                           </button>
                         </td>
@@ -416,6 +481,15 @@ export default function MyLoansPage() {
           )}
         </div>
       )}
+
+      {/* Loan Detail Modal */}
+      <LoanDetailModal
+        loan={selectedLoan}
+        onClose={() => setSelectedLoan(null)}
+        onRepay={handleRepayLoan}
+        userAddress={address}
+        sbtcPrice={sbtcPrice}
+      />
     </div>
   );
 }

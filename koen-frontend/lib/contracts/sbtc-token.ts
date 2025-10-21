@@ -35,6 +35,9 @@ export async function getSbtcBalance(
   try {
     const [contractAddress, contractName] = CONTRACTS.SBTC_TOKEN.split('.');
 
+    console.log('🔍 [sBTC] Fetching balance for:', address);
+    console.log('🔍 [sBTC] Contract:', `${contractAddress}.${contractName}`);
+
     const data = await robustFetchReadOnly(
       contractAddress,
       contractName,
@@ -43,19 +46,27 @@ export async function getSbtcBalance(
       network
     );
 
+    console.log('📦 [sBTC] Raw response:', data);
+
     // Handle response wrapper - could be data.value.value or data.value
     let balance = data.value;
     if (balance && typeof balance === 'object' && balance.value !== undefined) {
       balance = balance.value;
     }
 
+    console.log('💰 [sBTC] Parsed balance (satoshis):', balance);
+
     if (!balance) {
+      console.log('⚠️ [sBTC] No balance found, returning 0');
       return 0;
     }
 
-    return satoshisToSbtc(BigInt(balance));
+    const balanceInSbtc = satoshisToSbtc(BigInt(balance));
+    console.log('✅ [sBTC] Balance in sBTC:', balanceInSbtc);
+
+    return balanceInSbtc;
   } catch (error) {
-    console.error('Error fetching sBTC balance:', error);
+    console.error('❌ [sBTC] Error fetching sBTC balance:', error);
     return 0;
   }
 }

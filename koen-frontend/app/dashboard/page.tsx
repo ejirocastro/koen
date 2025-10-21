@@ -27,7 +27,11 @@ export default function DashboardPage() {
   // Calculate portfolio stats
   const totalLent = lenderLoans.reduce((sum, loan) => sum + loan.amount, 0);
   const totalBorrowed = borrowerLoans.reduce((sum, loan) => sum + loan.amount, 0);
-  const totalBalance = kusd + (sbtc * 100000); // Rough estimate (sBTC price in kUSD)
+
+  // Calculate total balance: kUSD + sBTC value in USD
+  // NOTE: kusd and sbtc from useTokenBalances are ALREADY converted (not micro/satoshis)
+  const sbtcPrice = 96420; // Approximate sBTC price in USD
+  const totalBalance = kusd + (sbtc * sbtcPrice);
 
   // Calculate average APR for lender loans
   const avgLenderApr = lenderLoans.length > 0
@@ -52,7 +56,7 @@ export default function DashboardPage() {
   const tierDisplay = reputationTier.toUpperCase();
 
   // Calculate available to borrow (simplified - based on reputation multiplier)
-  const availableToBorrow = reputation ? microKusdToKusd(kusd) * (1 + (reputation.multiplier / 10000)) : 0;
+  const availableToBorrow = reputation ? kusd * (1 + (reputation.multiplier / 10000)) : 0;
 
   if (!isConnected) {
     return (
@@ -98,10 +102,10 @@ export default function DashboardPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
-              <div className="text-2xl font-semibold tabular-nums mb-1">${microKusdToKusd(totalBalance).toLocaleString()}</div>
+              <div className="text-2xl font-semibold tabular-nums mb-1">${totalBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
               <div className="flex items-center gap-1">
-                <span className="text-[#0ECB81] text-sm tabular-nums">${microKusdToKusd(kusd).toLocaleString()} kUSD</span>
-                <span className="text-xs text-[#848E9C]">+ {satoshisToSbtc(sbtc).toFixed(4)} sBTC</span>
+                <span className="text-[#0ECB81] text-sm tabular-nums">${kusd.toLocaleString()} kUSD</span>
+                <span className="text-xs text-[#848E9C]">+ {sbtc.toFixed(4)} sBTC</span>
               </div>
             </div>
 

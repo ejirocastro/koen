@@ -16,6 +16,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import SettingsModal from '../settings/SettingsModal';
+import { useWallet, useTokenBalances } from '@/lib/hooks';
+import { microKusdToKusd, satoshisToSbtc } from '@/lib/utils/format-helpers';
 
 /**
  * Props for the TopBar component
@@ -25,10 +27,19 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onMenuClick }: TopBarProps) {
-  const [network, setNetwork] = useState<'testnet' | 'mainnet'>('testnet');
-  const [btcPrice, setBtcPrice] = useState<number>(96420);
-  const [priceChange, setPriceChange] = useState<number>(2.34);
+  const [network] = useState<'testnet' | 'mainnet'>('testnet');
+  const [btcPrice] = useState<number>(96420);
+  const [priceChange] = useState<number>(2.34);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Fetch wallet and token balances
+  const { address } = useWallet();
+  const { kusd, sbtc } = useTokenBalances(address);
+
+  // Calculate total balance in USD
+  // NOTE: kusd and sbtc from useTokenBalances are ALREADY converted (not micro/satoshis)
+  const sbtcPrice = 96420; // Approximate sBTC price
+  const totalBalance = kusd + (sbtc * sbtcPrice);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-[#0B0E11] border-b border-[#1E2329]">
@@ -94,7 +105,9 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
           {/* Total Balance */}
           <div className="hidden lg:flex flex-col items-end px-4 border-r border-[#1E2329]">
             <span className="text-xs text-[#848E9C]">Total Balance</span>
-            <span className="text-sm font-semibold text-white tabular-nums">$15,750.00</span>
+            <span className="text-sm font-semibold text-white tabular-nums">
+              ${totalBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            </span>
           </div>
 
           {/* Notifications */}
