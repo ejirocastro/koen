@@ -23,7 +23,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useWallet, useTokenBalances, useMarketplaceStats, useOracleFreshness, useUserSettings } from '@/lib/hooks';
+import { useWallet, useTokenBalances, useMarketplaceStats, useOracleFreshness, useUserSettings, useActiveOffers } from '@/lib/hooks';
 import { microKusdToKusd, satoshisToSbtc, daysToBlocks, blocksToDays, percentageToBps, sbtcToSatoshis, kusdToMicroKusd } from '@/lib/utils/format-helpers';
 import { createLendingOffer, createBorrowRequest } from '@/lib/contracts/p2p-marketplace';
 import { requestKusdFaucet } from '@/lib/contracts/kusd-token';
@@ -70,6 +70,7 @@ export default function CreatePage() {
   const { kusd, sbtc, isLoading: balancesLoading } = useTokenBalances(address);
   const { data: stats, isLoading: statsLoading } = useMarketplaceStats();
   const { data: oracleFreshness, refetch: refetchOracle } = useOracleFreshness();
+  const { data: activeOffers } = useActiveOffers(50); // Fetch offers to calculate average APR
 
   const isLoading = balancesLoading || statsLoading;
 
@@ -327,8 +328,10 @@ export default function CreatePage() {
 
   const preview = calculatePreview();
 
-  // Market average APR (from real data or fallback)
-  const marketAvgApr = 5.8; // TODO: Calculate from stats when available
+  // Market average APR - calculate from active offers or use fallback
+  const marketAvgApr = activeOffers && activeOffers.length > 0
+    ? activeOffers.reduce((sum, offer) => sum + offer.apr, 0) / activeOffers.length / 100 // Convert basis points to percentage
+    : 5.8; // Fallback if no offers available
 
   if (!isConnected) {
     return (

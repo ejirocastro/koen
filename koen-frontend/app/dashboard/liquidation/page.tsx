@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useAllLiquidatableLoans } from '@/lib/hooks';
 import { liquidateLoan } from '@/lib/contracts/p2p-marketplace';
-import { satoshisToSbtc } from '@/lib/utils/format-helpers';
 import toast from 'react-hot-toast';
 
 interface LiquidationLoan {
@@ -62,96 +61,8 @@ export default function LiquidationPage() {
     };
   }) || [];
 
-  // Mock data for demo purposes (remove when blockchain has data)
-  const mockLoans: LiquidationLoan[] = liquidationLoans.length === 0 ? [
-    {
-      loanId: 'L-00042',
-      borrower: 'SP2J6Z...4XYZ',
-      collateralAmount: 0.15,
-      collateralValue: 14463,
-      debtAmount: 13850,
-      healthFactor: 104.4,
-      ltv: 95.8,
-      liquidationPrice: 92308,
-      timeToLiquidation: '< 1 hour',
-      riskLevel: 'critical',
-    },
-    {
-      loanId: 'L-00038',
-      borrower: 'SP3K8B...9WXY',
-      collateralAmount: 0.08,
-      collateralValue: 7713,
-      debtAmount: 7200,
-      healthFactor: 107.1,
-      ltv: 93.3,
-      liquidationPrice: 90000,
-      timeToLiquidation: '2-4 hours',
-      riskLevel: 'critical',
-    },
-    {
-      loanId: 'L-00035',
-      borrower: 'SP1A9C...2DEF',
-      collateralAmount: 0.22,
-      collateralValue: 21212,
-      debtAmount: 19500,
-      healthFactor: 108.8,
-      ltv: 91.9,
-      liquidationPrice: 88636,
-      timeToLiquidation: '4-8 hours',
-      riskLevel: 'critical',
-    },
-    {
-      loanId: 'L-00031',
-      borrower: 'SP4M7N...8GHI',
-      collateralAmount: 0.12,
-      collateralValue: 11570,
-      debtAmount: 10200,
-      healthFactor: 113.4,
-      ltv: 88.2,
-      liquidationPrice: 85000,
-      timeToLiquidation: '12-24 hours',
-      riskLevel: 'high',
-    },
-    {
-      loanId: 'L-00029',
-      borrower: 'SP5N8P...1JKL',
-      collateralAmount: 0.18,
-      collateralValue: 17355,
-      debtAmount: 15000,
-      healthFactor: 115.7,
-      ltv: 86.4,
-      liquidationPrice: 83333,
-      timeToLiquidation: '1-2 days',
-      riskLevel: 'high',
-    },
-    {
-      loanId: 'L-00027',
-      borrower: 'SP6P9Q...5MNO',
-      collateralAmount: 0.09,
-      collateralValue: 8677,
-      debtAmount: 7400,
-      healthFactor: 117.3,
-      ltv: 85.3,
-      liquidationPrice: 82222,
-      timeToLiquidation: '2-3 days',
-      riskLevel: 'high',
-    },
-    {
-      loanId: 'L-00024',
-      borrower: 'SP7Q1R...3PQR',
-      collateralAmount: 0.25,
-      collateralValue: 24105,
-      debtAmount: 20000,
-      healthFactor: 120.5,
-      ltv: 83.0,
-      liquidationPrice: 80000,
-      timeToLiquidation: '3-5 days',
-      riskLevel: 'medium',
-    },
-  ] : [];
-
-  // Use blockchain loans if available, otherwise use mock data for demo
-  const displayLoans = liquidationLoans.length > 0 ? liquidationLoans : mockLoans;
+  // Use real blockchain data only
+  const displayLoans = liquidationLoans;
 
   const filteredLoans = displayLoans.filter(loan => {
     if (filterRisk === 'all') return true;
@@ -178,6 +89,10 @@ export default function LiquidationPage() {
 
   const totalAtRisk = filteredLoans.reduce((sum, loan) => sum + loan.debtAmount, 0);
   const avgHealthFactor = filteredLoans.reduce((sum, loan) => sum + loan.healthFactor, 0) / filteredLoans.length;
+
+  // Calculate potential liquidation rewards (5% bonus on collateral value)
+  const LIQUIDATION_BONUS = 0.05; // 5% bonus for liquidators
+  const potentialRewards = filteredLoans.reduce((sum, loan) => sum + (loan.collateralValue * LIQUIDATION_BONUS), 0);
 
   // Handle liquidation
   const handleLiquidate = async (loanId: string) => {
@@ -267,7 +182,7 @@ export default function LiquidationPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <div className="text-2xl font-bold text-white mb-1 tabular-nums">$4,850</div>
+          <div className="text-2xl font-bold text-white mb-1 tabular-nums">${potentialRewards.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</div>
           <div className="text-xs text-emerald-500">Potential earnings</div>
         </div>
       </div>
@@ -333,8 +248,22 @@ export default function LiquidationPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredLoans.map((loan, i) => (
-                <tr key={i} className="border-b border-[#2B3139] hover:bg-[#2B3139]/30 transition-colors group">
+              {filteredLoans.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="px-4 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <svg className="w-16 h-16 text-[#848E9C] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <h3 className="text-lg font-semibold text-white mb-2">No Liquidatable Loans</h3>
+                      <p className="text-sm text-[#848E9C] mb-1">All loans are currently healthy!</p>
+                      <p className="text-xs text-[#848E9C]">Loans appear here when health factor drops below 120%</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredLoans.map((loan, i) => (
+                  <tr key={i} className="border-b border-[#2B3139] hover:bg-[#2B3139]/30 transition-colors group">
                   {/* Risk Indicator */}
                   <td className="px-4 py-3">
                     <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border ${getRiskBgColor(loan.riskLevel)}`}>
@@ -403,7 +332,8 @@ export default function LiquidationPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
